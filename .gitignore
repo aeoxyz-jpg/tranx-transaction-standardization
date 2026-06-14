@@ -1,0 +1,15 @@
+data/
+adapters/
+__pycache__/
+*.pyc
+.venv/
+.env
+*.parquet
+!tests/fixtures/sample.parquet
+.DS_Store
+.pytest_cache/
+
+# Internal process docs — not part of the public portfolio
+docs/article/
+docs/retros/
+docs/superpowers/
