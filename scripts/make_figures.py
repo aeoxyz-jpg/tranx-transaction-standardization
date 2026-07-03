@@ -57,7 +57,7 @@ def fig_latency():
                 ha="center", va="bottom", fontsize=9)
     ax.set_yscale("log")
     ax.set_ylabel("ms / transaction (log scale)")
-    ax.set_title("Cost per transaction — five orders of magnitude apart")
+    ax.set_title("Cost per transaction — ~3 orders of magnitude apart (~1,400×)")
     ax.grid(axis="y", alpha=0.3, which="both")
     fig.tight_layout()
     fig.savefig(OUT / "latency.png", dpi=130)
@@ -110,8 +110,17 @@ def _table(headers, rows, title, fname, col_widths, heat_cols=(), figsize=(11, 3
     tbl.set_fontsize(11)
     tbl.scale(1, 1.6)
     n_cols = len(headers)
+    # rows with multi-line cell text need extra height so they don't overlap
+    # the row below them.
+    row_lines = {0: 1}
+    for ridx, row in enumerate(rows, start=1):
+        row_lines[ridx] = max(str(cell_text).count("\n") + 1 for cell_text in row)
+    base_height = next(iter(tbl.get_celld().values())).get_height()
     for (r, c), cell in tbl.get_celld().items():
         cell.set_edgecolor("#DDDDDD")
+        lines = row_lines.get(r, 1)
+        if lines > 1:
+            cell.set_height(base_height * (lines * 0.65 + 0.35))
         if r == 0:
             cell.set_facecolor("#34495E")
             cell.set_text_props(color="white", fontweight="bold")
@@ -143,7 +152,7 @@ def fig_engines_table():
         ["slm_lora", "Qwen2.5-3B LoRA fine-tuned (MLX)", "the LLM", "~710 ms"],
     ]
     _table(headers, rows, "Four standardization engines", "table_engines.png",
-           col_widths=[0.16, 0.42, 0.27, 0.15], figsize=(11, 3.2))
+           col_widths=[0.16, 0.42, 0.27, 0.15], figsize=(11, 3.6))
 
 
 def fig_results_table():
