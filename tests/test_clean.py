@@ -15,7 +15,6 @@ def test_keeps_alphanumeric_core():
 
 
 def test_strip_processor_prefix_spaced():
-    assert strip_processor_prefix("AMZN MKTP HOME DEPOT") == "HOME DEPOT"
     assert strip_processor_prefix("SQ *COFFEE") == "COFFEE"
     assert strip_processor_prefix("PAYPAL *CAPITAL ONE") == "CAPITAL ONE"
     assert strip_processor_prefix("POS DEBIT WALMART") == "WALMART"
@@ -23,9 +22,23 @@ def test_strip_processor_prefix_spaced():
 
 
 def test_strip_processor_prefix_concatenated():
-    # space-collapsed descriptors still get the fused prefix removed
-    assert strip_processor_prefix("POSDEBITMATERNITY") == "MATERNITY"
+    # star wrappers carry their own separator, so fused merchants are still exposed
     assert strip_processor_prefix("PP*CAPITALGAINS") == "CAPITALGAINS"
+    assert strip_processor_prefix("PP*DOUGHNOTTS") == "DOUGHNOTTS"
+
+
+def test_word_prefix_needs_boundary():
+    # a word prefix fused to letters is part of a name, not a prefix
+    assert strip_processor_prefix("POSDEBITMATERNITY") == "POSDEBITMATERNITY"
+    assert strip_processor_prefix("ACHILLES SHOES") == "ACHILLES SHOES"
+    assert strip_processor_prefix("PURCHASED GOODS LTD") == "PURCHASED GOODS LTD"
+    assert strip_processor_prefix("ACH ELECTRIC CO") == "ELECTRIC CO"
+
+
+def test_amazon_marketplace_is_not_a_wrapper():
+    # real statement descriptors: the merchant IS Amazon
+    for d in ("AMZNMktplace", "AMZNMKTPLACE AMAZO", "AMZN Mktp UK*MI5TU", "AMZN MKTP UK AMAZO"):
+        assert strip_processor_prefix(d) == d
 
 
 def test_strip_processor_prefix_noop_without_prefix():

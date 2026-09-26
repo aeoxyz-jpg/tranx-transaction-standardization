@@ -50,7 +50,7 @@ TIME_PHRASES = [
 # carry (aggregator prefixes, embedded geo/store ids, truncation, uppercasing).
 HARD_PREFIXES = [
     "SQ *", "TST* ", "PP*", "PAYPAL *", "SP * ", "POS DEBIT ",
-    "PURCHASE ", "AMZN MKTP ", "DEBIT CARD PURCHASE ", "ACH ",
+    "PURCHASE ", "DEBIT CARD PURCHASE ", "ACH ",
 ]
 HARD_CITIES = [
     "ATLANTA", "NEW YORK", "SAN JOSE", "CHICAGO", "AUSTIN",

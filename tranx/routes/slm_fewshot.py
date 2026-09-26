@@ -12,7 +12,7 @@ _FEWSHOT = (
     'Description: "McDonald\'s #111" -> {"canonical_merchant": "McDonald\'s", "category": "Food & Dining"}\n'
     'Description: "BP on Buford Hwy" -> {"canonical_merchant": "BP", "category": "Transportation"}\n'
     'Description: "Salary - Rush Hour" -> {"canonical_merchant": "Salary", "category": "Income"}\n'
-    'Description: "AMZN MKTP HOME DEPOT ATLANTA GA" -> {"canonical_merchant": "Home Depot", "category": "Shopping & Retail"}\n'
+    'Description: "HOME DEPOT #4521 ATLANTA GA" -> {"canonical_merchant": "Home Depot", "category": "Shopping & Retail"}\n'
     'Description: "SQ *CANES 47486" -> {"canonical_merchant": "Cane\'s", "category": "Food & Dining"}\n'
 )
 
@@ -22,7 +22,7 @@ def build_prompt(description: str, categories: list[str]) -> str:
     return (
         "You standardize bank transactions. Strip store numbers, locations and noise "
         "to get the canonical merchant, and choose exactly one category.\n"
-        "Ignore payment-processor prefixes (SQ*, TST*, PP*, PAYPAL*, SP*, AMZN MKTP, "
+        "Ignore payment-processor prefixes (SQ*, TST*, PP*, PAYPAL*, SP*, "
         "POS DEBIT) and return the real merchant that follows them, using its proper "
         "brand spelling and capitalization.\n"
         f"Allowed categories: {cats}\n"
