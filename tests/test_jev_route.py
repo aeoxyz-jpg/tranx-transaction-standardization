@@ -74,3 +74,44 @@ def test_jev_merchant_choice_picks_candidate_or_falls_back():
     r2.fit(feed, gold)
     out2 = r2.standardize(_txn(desc="Unknown Shop #9"))
     assert out2.canonical_merchant not in ("Cane's", "BP")
+
+
+def test_jev_slm_escalates_only_on_none():
+    from tranx.schema import Standardized
+
+    class FakeSlm:
+        fitted = False
+        def fit(self, f, g): FakeSlm.fitted = True
+        def standardize(self, txn):
+            return Standardized(canonical_merchant="FromSLM", category="Income", direction="outgoing")
+
+    feed = pl.DataFrame({"txn_id": ["a"], "description": ["Cane's #1"], "mcc": [5814]})
+    gold = pl.DataFrame({"txn_id": ["a"], "canonical_merchant": ["Cane's"],
+                         "category": ["Food & Dining"], "direction": ["outgoing"]})
+    answers = iter([NONE_OPTION, "Cane's"])
+    r = JevRoute(call_fn=lambda p: {"answers": {"merchant": {"choice": next(answers)},
+                                                "category": {"choice": "Food & Dining"}}},
+                 fallback=FakeSlm())
+    r.fit(feed, gold)
+    assert r.name == "jev_slm" and FakeSlm.fitted
+    out1 = r.standardize(_txn(desc="Unknown Shop #9"))
+    assert out1.canonical_merchant == "FromSLM" and out1.category == "Food & Dining"
+    assert r.standardize(_txn(desc="Cane's #2")).canonical_merchant == "Cane's"
+    assert r.escalated == 1
+
+
+def test_jev_call_retries_transient_5xx(monkeypatch):
+    import requests
+    from tranx.routes import jev
+
+    class R:
+        def __init__(self, code): self.status_code = code
+        def raise_for_status(self):
+            if self.status_code >= 400: raise requests.HTTPError(str(self.status_code))
+        def json(self): return {"ok": True}
+
+    codes = iter([520, 429, 200])
+    monkeypatch.setenv("TYPESAFE_API_KEY", "x")
+    monkeypatch.setattr(requests, "post", lambda *a, **k: R(next(codes)))
+    monkeypatch.setattr(jev.time, "sleep", lambda s: None)
+    assert jev._jev_call({}) == {"ok": True}

@@ -52,9 +52,17 @@ def _jev_call(payload: dict) -> dict:
     if not key:
         raise RuntimeError("TYPESAFE_API_KEY is not set")
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
-    for attempt in range(4):
-        resp = requests.post(JEV_URL, json=payload, headers=headers, timeout=30)
-        if resp.status_code in _RETRY_STATUSES and attempt < 3:
+    for attempt in range(6):
+        last = attempt == 5
+        try:
+            resp = requests.post(JEV_URL, json=payload, headers=headers, timeout=30)
+        except (requests.ConnectionError, requests.Timeout):
+            if last:
+                raise
+            time.sleep(0.5 * 2 ** attempt)
+            continue
+        # 429 rate limit, 529 overloaded, and transient 5xx (e.g. 520 from the CDN)
+        if (resp.status_code in _RETRY_STATUSES or resp.status_code >= 500) and not last:
             time.sleep(0.5 * 2 ** attempt)
             continue
         resp.raise_for_status()
@@ -67,12 +75,17 @@ class JevRoute(Route):
     rules matcher, since Jev has no free-text output."""
     name = "jev"
 
-    def __init__(self, call_fn=None, model: str = JEV_MODEL, merchant_choice: bool = False):
+    def __init__(self, call_fn=None, model: str = JEV_MODEL, merchant_choice: bool = False,
+                 fallback: Route | None = None):
         self._call = call_fn or _jev_call
         self._model = model
-        self._merchant_choice = merchant_choice
-        if merchant_choice:
+        self._merchant_choice = merchant_choice or fallback is not None
+        self._fallback = fallback  # merchant route used when Jev answers none_of_these
+        if fallback is not None:
+            self.name = "jev_slm"
+        elif merchant_choice:
             self.name = "jev_merchant"
+        self.escalated = 0
         self._rules = RulesRoute()
         self._categories = config.CATEGORIES
         self._default_category = "Shopping & Retail"
@@ -81,6 +94,8 @@ class JevRoute(Route):
 
     def fit(self, train_feed: pl.DataFrame, train_gold: pl.DataFrame) -> None:
         self._rules.fit(train_feed, train_gold)
+        if self._fallback is not None:
+            self._fallback.fit(train_feed, train_gold)
         cats = sorted(train_gold["category"].unique().to_list())
         if cats:
             self._categories = cats
@@ -104,7 +119,13 @@ class JevRoute(Route):
         self.input_tokens += int(answer.get("usage", {}).get("input_tokens", 0))
         if candidates:
             pick = answers.get("merchant", {}).get("choice")
-            merchant = pick if pick in candidates else derive_canonical(stripped)
+            if pick in candidates:
+                merchant = pick
+            elif self._fallback is not None:
+                self.escalated += 1
+                merchant = self._fallback.standardize(txn).canonical_merchant
+            else:
+                merchant = derive_canonical(stripped)
         else:
             merchant = self._rules._match_merchant(txn.description)
         ans = answers.get("category", {})

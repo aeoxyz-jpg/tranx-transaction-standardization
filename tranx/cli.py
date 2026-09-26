@@ -21,7 +21,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_run = sub.add_parser("run", help="run one route over the feed")
     p_run.add_argument("--route", required=True,
-                       choices=["rules", "embedding", "slm_fewshot", "slm_lora", "jev", "jev_merchant"])
+                       choices=["rules", "embedding", "slm_fewshot", "slm_lora", "jev", "jev_merchant", "jev_slm"])
     p_run.add_argument("--adapter-path", default="adapters/qwen-hard",
                        help="LoRA adapter dir for the slm_lora route")
     p_run.add_argument("--base-model", default=config.MLX_BASE,
@@ -37,6 +37,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument("--eval-cap", type=int, default=1000,
                         help="common eval-set cap so all routes are scored on the "
                              "same subset and the slow SLM route stays feasible")
+    p_eval.add_argument("--routes", default="rules,embedding,slm_fewshot",
+                        help="comma-separated routes to score")
+    p_eval.add_argument("--name", default="leaderboard.md",
+                        help="leaderboard file name under reports/")
+    p_eval.add_argument("--also", default="",
+                        help="optional extra leaderboard: NAME=route1,route2 (subset of --routes)")
+    p_eval.add_argument("--no-plot", action="store_true", help="skip the spend plot")
 
     p_ft = sub.add_parser("finetune-export",
                           help="export MLX LoRA training data from the unseen-split "
@@ -98,6 +105,10 @@ def _make_route(name: str, slm_model: str | None = None,
     if name in ("jev", "jev_merchant"):
         from tranx.routes.jev import JevRoute
         return JevRoute(merchant_choice=(name == "jev_merchant"))
+    if name == "jev_slm":
+        from tranx.routes.jev import JevRoute
+        from tranx.routes.slm_fewshot import SlmFewshotRoute
+        return JevRoute(fallback=SlmFewshotRoute(model=slm_model))
     from tranx.routes.slm_fewshot import SlmFewshotRoute
     if name == "slm_lora":
         from tranx.finetune.mlx_backend import make_mlx_chat
@@ -172,18 +183,37 @@ def main(argv=None) -> None:
         return
 
     if args.command == "eval":
+        import json
+        routes = args.routes.split(",")
         results = []
         by = {}  # (split, route) -> (preds, eval_feed, eval_gold)
         for split_name, splitter in _SPLITTERS.items():
             tf, tg, ef, eg = splitter(feed, gold, config.SEED)
             ef, eg = _cap_eval(ef, eg, args.eval_cap, config.SEED)
-            for name in ["rules", "embedding", "slm_fewshot"]:
+            for name in routes:
                 route = _make_route(name)
                 result, preds = _evaluate(route, tf, tg, ef, eg)
                 result["split"] = split_name
+                if hasattr(route, "escalated") and getattr(route, "_fallback", None) is not None:
+                    result["escalated"] = round(route.escalated / max(1, len(ef)), 3)
+                if getattr(route, "input_tokens", 0):
+                    result["input_tokens"] = route.input_tokens
                 results.append(result)
                 by[(split_name, name)] = (preds, ef, eg)
-        path = save_leaderboard(results, config.REPORTS_DIR)
+                print(result, flush=True)
+        results.sort(key=lambda r: (r["split"] != "random", routes.index(r["route"])
+                                    if r["route"] in routes else 99))
+        path = save_leaderboard(results, config.REPORTS_DIR, name=args.name)
+        (config.REPORTS_DIR / (args.name.rsplit(".", 1)[0] + ".json")).write_text(
+            json.dumps(results, indent=2))
+        if args.also:
+            also_name, also_routes = args.also.split("=")
+            keep = set(also_routes.split(","))
+            save_leaderboard([r for r in results if r["route"] in keep],
+                             config.REPORTS_DIR, name=also_name)
+        if args.no_plot:
+            print(f"wrote {path}")
+            return
         # Money shot from the random split (richest per-customer merchant mix).
         rand = [r for r in results if r["split"] == "random"]
         best = max(rand, key=lambda r: r["kpi_within_tol"])
@@ -194,7 +224,6 @@ def main(argv=None) -> None:
                           key=lambda r: r["kpi_within_tol"])
         print(f"wrote {path}; best on random: {best['route']}, "
               f"best on unseen: {unseen_best['route']}")
-
 
 if __name__ == "__main__":
     main()

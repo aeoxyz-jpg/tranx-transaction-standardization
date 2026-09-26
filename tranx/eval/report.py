@@ -28,10 +28,12 @@ def build_leaderboard_md(results: list[dict]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def save_leaderboard(results: list[dict], out_dir: Path) -> Path:
+def save_leaderboard(results: list[dict], out_dir: Path, name: str = "leaderboard.md",
+                     title: str = "Route Leaderboard", preamble: str = "") -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / "leaderboard.md"
-    path.write_text("# Route Leaderboard\n\n" + build_leaderboard_md(results))
+    path = out_dir / name
+    body = f"{preamble}\n\n" if preamble else ""
+    path.write_text(f"# {title}\n\n{body}" + build_leaderboard_md(results))
     return path
 
 
