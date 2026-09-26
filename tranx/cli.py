@@ -21,7 +21,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_run = sub.add_parser("run", help="run one route over the feed")
     p_run.add_argument("--route", required=True,
-                       choices=["rules", "embedding", "slm_fewshot", "slm_lora"])
+                       choices=["rules", "embedding", "slm_fewshot", "slm_lora", "jev", "jev_merchant"])
     p_run.add_argument("--adapter-path", default="adapters/qwen-hard",
                        help="LoRA adapter dir for the slm_lora route")
     p_run.add_argument("--base-model", default=config.MLX_BASE,
@@ -95,6 +95,9 @@ def _make_route(name: str, slm_model: str | None = None,
     if name == "embedding":
         from tranx.routes.embedding import EmbeddingRoute
         return EmbeddingRoute()
+    if name in ("jev", "jev_merchant"):
+        from tranx.routes.jev import JevRoute
+        return JevRoute(merchant_choice=(name == "jev_merchant"))
     from tranx.routes.slm_fewshot import SlmFewshotRoute
     if name == "slm_lora":
         from tranx.finetune.mlx_backend import make_mlx_chat
@@ -161,6 +164,10 @@ def main(argv=None) -> None:
         route = _make_route(args.route, slm_model=args.slm_model,
                             adapter_path=args.adapter_path, base_model=args.base_model)
         result, _ = _evaluate(route, tf, tg, ef, eg)
+        if getattr(route, "confidences", None):
+            result["mean_confidence"] = round(
+                sum(route.confidences) / len(route.confidences), 3)
+            result["input_tokens"] = route.input_tokens
         print(result)
         return
 
