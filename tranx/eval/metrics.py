@@ -90,6 +90,51 @@ def merchant_spend_kpi(feed: pl.DataFrame, pred: pl.DataFrame, gold: pl.DataFram
     return {"mae": round(mae, 4), "within_tolerance": round(within, 4)}
 
 
+def merchant_subsets(pred: pl.DataFrame, gold: pl.DataFrame) -> dict:
+    """Merchant normalized-match accuracy split by hard-mode noise subset
+    (recoverable: neither noise fired; abbreviated: noise_abbrev fired; truncated:
+    noise_trunc fired — a row can land in both abbreviated and truncated) and by
+    origin ("source" / "local"). None where a subset has no rows."""
+    j = pred.select(["txn_id", "canonical_merchant"]).join(
+        gold.select(["txn_id", "canonical_merchant", "noise_abbrev", "noise_trunc", "origin"]),
+        on="txn_id", suffix="_gold")
+    j = j.filter(pl.col("canonical_merchant_gold").is_not_null())
+
+    def _acc(df: pl.DataFrame):
+        if not len(df):
+            return None
+        p = [_norm_merchant(x or "") for x in df["canonical_merchant"].to_list()]
+        g = [_norm_merchant(x) for x in df["canonical_merchant_gold"].to_list()]
+        return sum(a == b for a, b in zip(p, g)) / len(p)
+
+    recoverable = j.filter(~pl.col("noise_abbrev").fill_null(False)
+                           & ~pl.col("noise_trunc").fill_null(False))
+    abbreviated = j.filter(pl.col("noise_abbrev").fill_null(False))
+    truncated = j.filter(pl.col("noise_trunc").fill_null(False))
+    origins = j["origin"].drop_nulls().unique().to_list()
+    return {
+        "recoverable": _acc(recoverable),
+        "abbreviated": _acc(abbreviated),
+        "truncated": _acc(truncated),
+        "origin": {o: _acc(j.filter(pl.col("origin") == o)) for o in origins},
+    }
+
+
+def retrieval_recall(gold_merchants: list, candidate_lists: list) -> float:
+    """Share of rows whose (normalized) gold merchant is in that row's candidate
+    list. Used to split a route's `none_of_these` into retrieval misses vs
+    genuinely new merchants."""
+    if not gold_merchants:
+        return 0.0
+    hits = 0
+    for g, cands in zip(gold_merchants, candidate_lists):
+        gn = _norm_merchant(g or "")
+        cn = {_norm_merchant(c or "") for c in (cands or [])}
+        if gn in cn:
+            hits += 1
+    return hits / len(gold_merchants)
+
+
 def cluster_bootstrap_ci(pred: pl.DataFrame, gold: pl.DataFrame, n_boot: int = 1000,
                          seed: int = 0) -> dict:
     """95% CI half-widths for category accuracy and merchant_norm, resampling whole

@@ -110,6 +110,58 @@ def test_null_gold_merchant_rows_are_not_scored():
     assert metrics.category_accuracy(pred, gold) == 1.0
 
 
+def test_merchant_subsets_splits_recoverable_abbreviated_truncated():
+    pred = pl.DataFrame({
+        "txn_id": ["a", "b", "c", "d"],
+        "canonical_merchant": ["Joe's Diner", "Joe's Diner", "WRONG", "Joe's Diner"],
+    })
+    gold = pl.DataFrame({
+        "txn_id": ["a", "b", "c", "d"],
+        "canonical_merchant": ["Joe's Diner", "Joe's Diner", "Joe's Diner", "Joe's Diner"],
+        "noise_abbrev": [False, True, True, False],
+        "noise_trunc": [False, False, False, True],
+        "origin": ["source", "local", "local", "source"],
+    })
+    res = metrics.merchant_subsets(pred, gold)
+    # recoverable: rows a, d (neither noise fired) -> both correct -> 1.0
+    assert res["recoverable"] == 1.0
+    # abbreviated: rows b, c -> b correct, c wrong -> 0.5
+    assert res["abbreviated"] == 0.5
+    # truncated: row d only -> correct -> 1.0
+    assert res["truncated"] == 1.0
+    assert res["origin"]["source"] == 1.0  # rows a, d both correct
+    assert res["origin"]["local"] == 0.5  # rows b, c: b correct, c wrong
+
+
+def test_merchant_subsets_none_when_subset_empty():
+    pred = pl.DataFrame({"txn_id": ["a"], "canonical_merchant": ["Joe's Diner"]})
+    gold = pl.DataFrame({
+        "txn_id": ["a"], "canonical_merchant": ["Joe's Diner"],
+        "noise_abbrev": [False], "noise_trunc": [False], "origin": ["source"],
+    })
+    res = metrics.merchant_subsets(pred, gold)
+    assert res["abbreviated"] is None
+    assert res["truncated"] is None
+    assert res["recoverable"] == 1.0
+
+
+def test_retrieval_recall_share_of_gold_in_candidates():
+    gold_merchants = ["Starbucks", "BP", "Unknown Merchant"]
+    candidate_lists = [["Starbucks", "Costa"], ["Shell", "Texaco"], ["Foo", "Bar"]]
+    # only the first row's gold is in its candidate list -> 1/3
+    assert metrics.retrieval_recall(gold_merchants, candidate_lists) == 1 / 3
+
+
+def test_retrieval_recall_normalized_match():
+    gold_merchants = ["Raising Cane's"]
+    candidate_lists = [["RAISING CANES"]]
+    assert metrics.retrieval_recall(gold_merchants, candidate_lists) == 1.0
+
+
+def test_retrieval_recall_empty_is_zero():
+    assert metrics.retrieval_recall([], []) == 0.0
+
+
 def test_spend_kpi_uses_normalized_names():
     import polars as pl
     from tranx.eval import metrics

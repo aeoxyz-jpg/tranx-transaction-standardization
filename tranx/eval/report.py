@@ -4,17 +4,26 @@ import polars as pl
 _COLUMNS = [
     ("route", "route"),
     ("split", "split"),
+    ("view", "view"),
     ("category_acc", "Category Acc"),
     ("category_ci", "Cat ±95%"),
     ("macro_f1", "Macro F1"),
     ("merchant_acc", "Merchant Acc"),
     ("merchant_norm", "Merchant Norm"),
     ("merchant_norm_ci", "Merch ±95%"),
+    ("no_match_rate", "No-Match Rate"),
+    ("retrieval_recall", "Retrieval Recall"),
     ("dedup_ratio", "Dedup Ratio"),
     ("gold_dedup_ratio", "Gold Dedup"),
     ("kpi_within_tol", "Spend KPI"),
     ("avg_ms", "ms/txn"),
 ]
+# Columns that show "-" rather than "" when the result dict does not have them
+# (older callers / views that do not compute this metric).
+_DASH_WHEN_ABSENT = {"view", "no_match_rate", "retrieval_recall"}
+# The spend KPI only means something on the ideal-cache view (predictions are
+# broadcast per descriptor there); on the model view it is shown as "-".
+_IDEAL_CACHE_ONLY = {"kpi_within_tol"}
 
 
 def build_leaderboard_md(results: list[dict]) -> str:
@@ -25,7 +34,11 @@ def build_leaderboard_md(results: list[dict]) -> str:
     for r in results:
         cells = []
         for key, _ in _COLUMNS:
-            v = r.get(key, "")
+            if key in _IDEAL_CACHE_ONLY and r.get("view") != "ideal_cache":
+                cells.append("-")
+                continue
+            default = "-" if key in _DASH_WHEN_ABSENT else ""
+            v = r.get(key, default)
             cells.append(f"{v:.2f}" if isinstance(v, float) else str(v))
         lines.append("| " + " | ".join(cells) + " |")
     return "\n".join(lines) + "\n"
