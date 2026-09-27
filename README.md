@@ -137,16 +137,34 @@ with training, 17 categories:
 
 The SLM returned an unparseable or off-list category for 31 of the 1000 rows.
 
-## How to read this
+## How to choose
 
-- If merchants are known and labelled data exists, embeddings are fast (7 ms) and strong.
-  Jev is slightly more accurate at picking from the list, at network latency and API cost.
-- If new merchants matter, the SLM is the only method here that can name them. It is about
-  60 times slower than embeddings, which suits batch processing or a fallback tier rather
-  than every transaction.
-- A tiered setup (a list-bound method first, the SLM for what it cannot place) needs a
-  reliable "not on the list" signal. Jev's `none_of_these` works on a clean brand-only list
-  and leaks when the list mixes brands with generic labels.
+Which method to use for the merchant depends mostly on whether the merchant is already on
+your list:
+
+![Decision tree for merchant normalization: known merchants go to Jev (0.98 synthetic, 0.96 real, about 340 ms) or to embeddings when speed matters (0.96 synthetic, 0.88 real, 7 ms); new merchants go to the SLM (0.89 on unseen merchants, where list-bound methods score 0.00); mixed traffic goes to the Jev-then-SLM cascade (0.85 on real statements).](reports/figures/merchant_decision.png)
+
+For the category, the deciding questions are whether you have labelled data and whether
+the merchants are familiar:
+
+![Decision tree for category: with labelled rows and familiar merchants use embeddings plus logistic regression (0.94 synthetic, 0.90 independent dataset); without labelled rows or for new brands use Jev's zero-shot category choice (0.88 synthetic unseen, 0.81 independent dataset). Reference: metadata alone gives 0.68, the SLM 0.76 to 0.79.](reports/figures/category_decision.png)
+
+The cascade used for mixed traffic lets Jev pick from the list first and hands its "none
+of these" answers to the SLM:
+
+![Flow of the Jev-then-SLM cascade: fuzzy retrieval of the top 20 known merchants, a Jev Choice among them or none_of_these; a pick becomes the merchant, none_of_these sends the description to the SLM, which writes the merchant.](reports/figures/jev_slm_cascade.png)
+
+| Traffic | Sent to the SLM | Cascade accuracy | SLM alone | Source |
+|---|---|---|---|---|
+| Known merchants (synthetic random) | 1.2% | 0.98 | 0.90 | `leaderboard_hard_jev.md` |
+| New merchants (synthetic unseen) | 87.5% | 0.81 | 0.89 | `leaderboard_hard_jev.md` |
+| Real statements, realistic list | 36% | 0.85 | 0.80 | `real/moneydata_summary_high-medium_aliased.json` |
+
+The cascade is only as good as Jev's "not on the list" answer. On a clean brand-only list
+it is reliable; with generic entries or parent brands on the list, some new merchants are
+filed under them. The SLM is about 60 times slower than embeddings, so it fits a batch or
+fallback tier rather than every transaction. Diagram sources are in `docs/diagrams/`
+(Mermaid).
 
 ## Evaluation controls and caveats
 

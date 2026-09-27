@@ -1,0 +1,6 @@
+flowchart LR
+    D["Transaction<br/>description"] --> F["Fuzzy retrieval:<br/>top-20 known merchants"]
+    F --> J{"Jev Choice:<br/>one of the 20,<br/>or none_of_these"}
+    J -->|"picked a merchant"| OUT1["Merchant = Jev's pick"]
+    J -->|none_of_these| S["SLM few-shot<br/>writes the merchant"]
+    S --> OUT2["Merchant = SLM output"]

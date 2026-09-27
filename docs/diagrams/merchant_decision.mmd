@@ -1,0 +1,7 @@
+flowchart TD
+    Q1{"Is the merchant likely<br/>on your known list?"}
+    Q1 -->|"yes, known merchants"| Q2{"Can you call a<br/>hosted API per row?"}
+    Q1 -->|"no, new merchants matter"| SLM["<b>SLM few-shot</b><br/>names merchants it never saw<br/>synthetic unseen 0.89<br/>(list-bound methods: 0.00)<br/>~450 ms/txn, local"]
+    Q1 -->|"mixed traffic"| CASC["<b>Jev, none to SLM</b><br/>list pick first, SLM for the rest<br/>real statements 0.85<br/>see cascade diagram"]
+    Q2 -->|yes| JEV["<b>Jev pick from list</b><br/>synthetic 0.98, real 0.96<br/>~340 ms/txn, network"]
+    Q2 -->|"no, need speed"| EMB["<b>Embedding nearest name</b><br/>synthetic 0.96, real 0.88<br/>~7 ms/txn"]
