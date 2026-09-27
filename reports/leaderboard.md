@@ -1,5 +1,9 @@
 # Route Leaderboard
 
+> **Superseded (2026-09-27).** Standard-feed results from before the label and harness
+> audit (tautological silver labels, leaky unseen split). Kept for history only; current
+> results are in `leaderboard_hard.md` and `leaderboard_hard_jev.md`.
+
 | route | split | Category Acc | Macro F1 | Merchant Acc | Merchant Norm | Dedup Ratio | Spend KPI | ms/txn |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | rules | random | 0.86 | 0.86 | 1.00 | 1.00 | 0.48 | 1.00 | 0.04 |

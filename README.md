@@ -1,128 +1,191 @@
-# Tranx — Transaction Standardization with Small Language Models
+# Tranx: Transaction Standardization with Small Language Models
 
-Standardize noisy bank transaction descriptions into **direction**, **category**,
-and **canonical merchant**, then roll up per-customer spend by merchant — so a
-customer can see their total at McDonald's or BP across messy lines like
-`McDonald's #111`, `McDonald's #121`, `BP on Buford Hwy`, `BP @ Pleasant Hills`.
+Tranx turns noisy bank transaction descriptions into **direction**, **category** and
+**canonical merchant**, then rolls up per-customer spend by merchant. A customer can then
+see one total for McDonald's or BP across lines like `McDonald's #111`,
+`SQ *MCDONALDS F1234 ATLANTA GA` and `BP on Buford Hwy`.
 
-## Why
+Four method families are compared under one evaluation harness: fuzzy rules, sentence
+embeddings, a local small language model (SLM) prompted few-shot, and TypeSafe's hosted
+Jev model.
 
-Real bank feeds carry cryptic descriptions, transaction type codes, and partial
-merchant codes (MCC). This project simulates that feed from a public dataset and
-compares three locally-runnable approaches under one evaluation harness.
+## Results in brief
 
-## Architecture
+- **Known merchants:** Jev picks the right merchant from a known list most often (0.98 on
+  the synthetic feed, 0.96 on real UK statements), ahead of embeddings (0.96 / 0.88).
+- **New merchants:** only the SLM can name a merchant that is not on the list (0.89 on
+  brand-disjoint synthetic merchants). List-bound methods score 0 there by construction.
+- **Category:** with labelled training data and familiar merchants, embeddings plus
+  logistic regression are best (0.94). On new brands, Jev is best without any training
+  (0.88 vs SLM 0.79, embeddings 0.64).
+- **Combining them:** let Jev pick from the known list and send its "none of these"
+  answers to the SLM. On real statements this is the most accurate setup (0.85 vs SLM
+  alone 0.80). It depends on a clean list: when the list holds generic entries such as
+  "Pharmacy" or "Internet Provider", or a parent brand such as "Hilton", Jev files some
+  new merchants under them instead of answering "none of these".
 
-```
-raw dataset ──▶ synth ──▶ bank feed + gold/silver labels
-  (4 columns)            (customer, amount, direction, payment_method,
-                          type_code, partial & noisy MCC; canonical merchant)
+All numbers below come from `reports/`. Synthetic results use 1000 eval rows per split;
+95% intervals are merchant-cluster bootstrap half-widths from `reports/leaderboard_hard_jev.md`.
 
-bank feed ──▶ clean ──▶ [ route: merchant_norm + classify ] ──▶ aggregate ──▶ rollups
-                          rules | embedding | slm_fewshot
+## Data and labels
 
-eval ──▶ random split + unseen-merchant split ──▶ leaderboard + money-shot plot
-```
+| Source | What it is | Labels | Used for |
+|---|---|---|---|
+| Synthetic hard feed | 100k transactions built from the public HF dataset `mitulshah/transaction-categorization`, with customers, amounts, payment methods, noisy MCCs, and card-network-style dirty descriptors | Silver: merchant derived from the clean source description; category from the source | Main leaderboard, both splits |
+| MoneyData (real) | One person's anonymized UK bank statements, 2015-2022 ([Firat et al. 2023](https://github.com/thevisgroup/MoneyVis)); 547 card and direct-debit descriptors, 3,521 rows | Merchant labels drafted by an LLM, then audited by a second model; **not human-verified**; alias table for legitimate alternative names | Merchant normalization on real noise |
+| DoDataThings v2 | Independently generated synthetic US descriptors, 17 categories ([HF](https://huggingface.co/datasets/DoDataThings/us-bank-transaction-categories-v2)) | Category only | Category on noise that Tranx's own generator did not produce |
 
-`clean` and `aggregate` are shared pipeline stages; each route implements
-merchant normalization and category classification internally behind a common
-`standardize(txn) -> {canonical_merchant, category, direction}` interface.
+**Merchant-less rows.** About 25% of synthetic rows have no merchant: transaction types
+(salary, transfer, loan, donation, fees) and labels that name what was bought rather than
+who was paid (MRI, Toll, Broadband, Insurance). They are scored for category only.
+Unnamed providers and venues (Hospital, Pharmacy, Cable Company, Gym) remain merchants.
+
+**Splits.** `random` shares merchants between train and eval. `unseen` holds out whole
+brand families by a stable hash, so no eval brand, and no sibling label such as Walmart
+for Walmart Pharmacy, appears in training. For MoneyData the equivalent is a realistic
+merchant list: merchants seen in at least two descriptors are on the list, and the 202
+merchants seen once count as new.
 
 ## Routes
 
-| Route | Merchant normalization | Category | Cost |
-|---|---|---|---|
-| `rules` | rapidfuzz vs learned canonical list | learned MCC & merchant priors | cheapest |
-| `embedding` | nearest canonical (MiniLM) | logistic regression | mid |
-| `slm_fewshot` | local Qwen2.5-3B few-shot | LLM | highest |
-| `slm_lora` | Qwen2.5-3B LoRA fine-tuned (MLX, Apple Silicon) | LLM | highest |
+| Route | Merchant | Category | Needs | ms/txn |
+|---|---|---|---|---|
+| `rules` | rapidfuzz match against the training merchant list; falls back to cleaned text | MCC and merchant priors learned from training data | labelled training rows | 0.1 |
+| `embedding` | nearest merchant name by MiniLM cosine similarity | logistic regression on description embeddings | merchant list; labelled rows for category | 7 |
+| `slm_fewshot` | Qwen2.5-3B (Ollama) reads the description and writes the merchant | same prompt | nothing trained; runs locally | 440-500 |
+| `jev_merchant` | Jev chooses among the fuzzy top-20 known merchants or `none_of_these` (then cleaned text) | Jev chooses one of the categories | merchant list; `TYPESAFE_API_KEY` | 340 |
+| `jev_slm` | as `jev_merchant`, but `none_of_these` goes to the SLM | Jev | both | 440-780 |
 
-The `slm_lora` route fine-tunes the base model on the hard feed via MLX
-(`scripts/train_lora.sh`). It beats few-shot on category and seen merchants but
-**regresses on unseen merchants** — fine-tuning trades base-model generalization
-for in-distribution accuracy. See `docs/findings/lora-vs-fewshot.md`.
-
-All category priors in `rules` are **learned from training data**, never read
-from the synthetic generative tables.
+Jev is TypeSafe's hosted "System One" model: it answers typed questions (here a Choice
+over named options) with a probability per option and a confidence score, and never
+writes free text. `rules` sees the description and MCC; the other four routes see the
+description only. Latency is serial, one request at a time, on an Apple Silicon laptop;
+Jev's figure is mostly the network round trip.
 
 ## Results
 
-Every route is scored on two splits (**random** and **unseen-merchant**) and two
-feeds: standard (`reports/leaderboard.md`) and hard mode (`reports/leaderboard_hard.md`,
-dirty card-network descriptors). The money shot is `reports/spend_<customer>.png` —
-spend-by-merchant for one customer, gold vs predicted.
+### Synthetic hard feed
 
-Merchant normalization (`Merchant Norm`, case/punctuation-insensitive), the metric
-that matches the headline goal:
+`reports/leaderboard_hard_jev.md`, category / merchant (normalized match):
 
-| feed | split | rules | embedding | slm_fewshot |
+| Route | random: category | random: merchant | unseen: category | unseen: merchant |
 |---|---|---|---|---|
-| standard | random | 1.00\* | 0.99 | 0.81 |
-| standard | unseen | 0.94\* | 0.00 | 0.77 |
-| hard | random | 0.74 | **0.90** | 0.81 |
-| hard | unseen | 0.03 | 0.00 | **0.78** |
+| rules | 0.79 | 0.77 | 0.55 | 0.25\* |
+| embedding | **0.94** | 0.96 | 0.64 | 0.00 |
+| slm_fewshot | 0.76 | 0.90 | 0.79 | **0.89** |
+| jev_merchant | 0.85 | **0.98** | **0.88** | 0.26\* |
+| jev_slm | 0.85 | **0.98** | 0.87 | 0.81 |
 
-\* tautological: `rules` falls back to the same `derive_canonical` that generated
-the silver label (see caveats below). On hard descriptors the tautology is gone:
-`rules` token-set matching makes it competitive on the random split (0.74) but its
-unseen-merchant score collapses to ~0 — hand-rules cannot generalize to merchants
-they never saw, which is the whole reason the SLM earns its cost.
+\* Fallback artifact. When no known merchant matches, `rules` and `jev_merchant` output
+the cleaned description, and the silver label was produced by the same cleaning function.
+These cells do not measure generalization.
 
-**Reading it:**
-- The **unseen-merchant split** is the honest test — training sees zero eval
-  merchants, so memorizing a canonical list cannot coast.
-- **embedding** wins on seen/clean data (robust retrieval) but is vocabulary-locked:
-  **0.00** on every unseen split — it cannot emit a merchant it never trained on.
-- On the realistic case — **dirty descriptors + unseen merchants** — only the local
-  **SLM generalizes** (0.78), because it parses the string instead of matching a
-  vocabulary. Category tells the same story: embedding leads on clean data, the SLM
-  leads on hard+unseen (0.72 vs 0.68).
-- The trade-off: the SLM costs ~570 ms/txn vs embedding's ~8 ms and rules' ~0.05 ms —
-  suited to offline batch or hard-case fallback, not per-txn real time.
+Unseen-split intervals are wide (category ±0.05 to ±0.09, merchant up to ±0.08) because
+the held-out set covers only 67 merchants. A category guesser that never reads the
+description (type code, MCC and amount magnitude) scores 0.68, so category gains should be
+read against that baseline rather than against chance.
+
+### Jev as a gate for new merchants
+
+On brand-disjoint unseen merchants, Jev answered `none_of_these` for 87.3% of rows and
+matched the other 12.7% to a known label, mostly a generic provider type (CVS to
+"Pharmacy", State Police to "Police Department", Windstream to "Internet Provider"). That
+is why `jev_slm` (0.81) trails the SLM alone (0.89) on the unseen split.
+
+Jev's confidence mostly separates its right and wrong picks
+(`reports/jev_confidence_summary.json`): the probability that a right pick has higher
+confidence than a wrong one (AUROC) is 0.98 on the synthetic random split and 0.93 to 1.00
+on MoneyData, and right picks have a median confidence of 1.00. The wrong picks that
+remain are ones Jev is sure about. On MoneyData's realistic list they are sub-brands
+matched to a parent (DoubleTree by Hilton to "Hilton", Uber Eats to "Uber") at confidence
+0.98 to 0.99. So a confidence threshold narrows the gap but does not close it
+(`reports/jev_threshold_cascade.json`):
+
+| Merchant accuracy of the Jev to SLM cascade | no threshold | threshold 0.95 | SLM only |
+|---|---|---|---|
+| Synthetic, known merchants (random) | 0.985 | 0.957 | 0.899 |
+| Synthetic, new merchants (unseen) | 0.803 | 0.873 | 0.893 |
+| MoneyData, realistic list | 0.850 | 0.834 | 0.804 |
+
+For a mix of 80% known and 20% new merchants on the synthetic feed, no threshold and a
+threshold of 0.7 tie at 0.949.
+
+### Real UK statements (MoneyData)
+
+`reports/real/moneydata_summary_high-medium_aliased.json`, merchant accuracy per
+descriptor:
+
+| Setting | fuzzy | embedding | SLM | Jev | Jev, none to SLM |
+|---|---|---|---|---|---|
+| Every merchant on the list | 0.87 | 0.88 | 0.80 | **0.96** | |
+| Realistic list (one-off merchants are new) | 0.60 | 0.55 | 0.80 | 0.62 | **0.85** |
+
+With the realistic list, Jev answered `none_of_these` for 95.5% of descriptors whose
+merchant was off the list and for 1.7% of those on it. On the off-list merchants alone the
+SLM gets 0.65. Amazon is 34% of rows, so row-weighted scores lean on one brand. Averaged
+per merchant instead, the realistic-list scores fall to 0.70 or below, because most
+merchants in one person's statements appear only once.
+
+### Category on an independent generator (DoDataThings v2)
+
+`reports/real/ddt_summary.json`, 1000 test descriptions after removing duplicates shared
+with training, 17 categories:
+
+| embedding (trained on this dataset) | Jev (zero-shot) | SLM (zero-shot) |
+|---|---|---|
+| **0.90** | 0.81 | 0.62 |
+
+The SLM returned an unparseable or off-list category for 31 of the 1000 rows.
+
+## How to read this
+
+- If merchants are known and labelled data exists, embeddings are fast (7 ms) and strong.
+  Jev is slightly more accurate at picking from the list, at network latency and API cost.
+- If new merchants matter, the SLM is the only method here that can name them. It is about
+  60 times slower than embeddings, which suits batch processing or a fallback tier rather
+  than every transaction.
+- A tiered setup (a list-bound method first, the SLM for what it cannot place) needs a
+  reliable "not on the list" signal. Jev's `none_of_these` works on a clean brand-only list
+  and leaks when the list mixes brands with generic labels.
+
+## Evaluation controls and caveats
+
+- **Synthetic data, silver labels.** The main feed and its merchant labels are generated.
+  The labels were audited on 2026-09-27: template suffixes that split one brand into
+  several labels were removed, merged and split names were fixed, merchant-less rows were
+  introduced, and the synthetic type code no longer encodes the category. Results before
+  that date are not comparable.
+- **Cleaner vs generator.** The description cleaner and the generator share part of their
+  noise vocabulary (processor prefixes), so the synthetic feed is kinder to string
+  cleaning than real statements are. MoneyData and DoDataThings exist to check that.
+- **Real-data labels** were drafted and audited by models, not by a person, and MoneyData
+  is a single person's statements.
+- **Direction** is recoverable from the amount sign by construction and is not used to
+  compare routes.
+- **Run-to-run variance.** The SLM varies by about ±1 point between runs (Ollama on GPU is
+  not bit-deterministic at temperature 0).
 
 ## Quickstart
 
 ```bash
+python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-huggingface-cli login              # accept dataset terms on the HF page first
+huggingface-cli login              # accept the dataset terms on its HF page first
 ollama pull qwen2.5:3b-instruct
-./run.sh                           # full 100k run; TRANX_N=5000 ./run.sh for a quick pass
+./run.sh                           # tests, hard-mode synth, leaderboard; TRANX_N=5000 ./run.sh for a quick pass
 ```
 
-## Synthetic-data caveats & leakage control
+`run.sh` scores the three local routes into `reports/leaderboard_hard.md`. With
+`TYPESAFE_API_KEY` set it also scores the Jev routes into `reports/leaderboard_hard_jev.md`.
 
-The bank feed is synthesized on top of a public dataset, so the evaluation is
-only as honest as its controls. The known leakage paths and how they are handled:
+The external evaluations live in `scripts/` (`eval_moneydata.py`, `eval_ddt.py`,
+`jev_confidence.py`, `jev_threshold_cascade.py`). MoneyData's raw file, labels and aliases
+are kept locally under `data/real/` and are not in this repository, because the source
+repository carries no licence and the labels are unverified; the scripts expect those
+files to exist.
 
-- **Silver merchant labels are circular by construction.** The gold
-  `canonical_merchant` is `derive_canonical(description)`, and a rules route can
-  reuse the same stripping. On a random split this makes `merchant_acc` look
-  near-perfect. **Control:** the unseen-merchant split — training never sees the
-  eval merchants, so the score reflects generalization, not memorization.
-  **Important caveat:** even on the unseen split, the `rules` route's no-match
-  fallback re-derives the silver label with the same `derive_canonical`, so its
-  unseen `merchant_acc` (~0.95) is a tautology, not generalization. The honest
-  contrast is `embedding` at 0.00 (vocabulary-locked — it cannot emit a merchant
-  it never saw) and `slm_fewshot` at ~0.87 (genuinely parses unseen strings).
-  That spread, not the rules number, is the real merchant-normalization story.
-- **MCC could be a category oracle.** If each category mapped to a disjoint MCC
-  set, inverting MCC would hand back the label. **Control:** the synthetic MCCs
-  overlap across categories and ~15% are drawn from a wrong category, so MCC is a
-  strong-but-imperfect prior; and `rules` *learns* the MCC→category map from
-  training data rather than reading the generative table.
-- **Direction is trivial.** It is recoverable from the amount sign by
-  construction, so it is not used to differentiate routes.
+## History
 
-## Notes
-
-- All randomness is seeded (`SEED = 42`); runs are reproducible.
-- `eval` scores every route on a common capped subset of the held-out split
-  (`--eval-cap`, default 1000) so the leaderboard is a fair like-for-like
-  comparison and the slow local-SLM route stays feasible. `rules`/`embedding`
-  could run on the full split, but all routes share the same rows for fairness.
-- The source dataset has real label noise (the same merchant appears under
-  different categories), which caps achievable category accuracy — merchant
-  normalization is evaluated independently for this reason.
-- Fine-tuning is Apple-Silicon native via MLX (no CUDA): the `slm_lora` route
-  trains a Qwen2.5-3B LoRA adapter with `scripts/train_lora.sh`. See the
-  generalization trade-off in `docs/findings/lora-vs-fewshot.md`.
+An earlier version compared a LoRA fine-tune of the same SLM (`slm_lora`) and reported
+results on a standard (clean) feed. Both predate the label audit and are no longer
+maintained; `reports/leaderboard.md` and `docs/findings/` are kept as history.

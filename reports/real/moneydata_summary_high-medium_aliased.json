@@ -35,9 +35,9 @@
     "macro_by_merchant": 0.939
   },
   "jev_hold": {
-    "distinct": 0.62,
-    "row_weighted": 0.678,
-    "macro_by_merchant": 0.217
+    "distinct": 0.618,
+    "row_weighted": 0.677,
+    "macro_by_merchant": 0.215
   },
   "cascade_embed0.6_to_slm": {
     "distinct": 0.821,
@@ -88,9 +88,9 @@
     "held_wrongly_accepted": 0.0
   },
   "cascade_jevnone_to_slm": {
-    "distinct": 0.85,
-    "row_weighted": 0.859,
-    "macro_by_merchant": 0.698,
+    "distinct": 0.848,
+    "row_weighted": 0.858,
+    "macro_by_merchant": 0.696,
     "held_subset": {
       "distinct": 0.619,
       "row_weighted": 0.574,
@@ -99,8 +99,8 @@
     "escalated": 0.364
   },
   "jev_hold_none_rate": {
-    "on_held_merchants": 0.96,
-    "on_known_merchants": 0.014
+    "on_held_merchants": 0.955,
+    "on_known_merchants": 0.017
   },
   "held_subset_only": {
     "derive": {
@@ -132,7 +132,7 @@
     "embed_hold": 0.618,
     "slm": 0.803,
     "jev_known": 0.95,
-    "jev_hold": 0.697,
-    "cascade_jevnone_to_slm": 0.857
+    "jev_hold": 0.695,
+    "cascade_jevnone_to_slm": 0.855
   }
 }

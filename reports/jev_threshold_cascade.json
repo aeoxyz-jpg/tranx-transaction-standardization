@@ -2,131 +2,131 @@
   "synthetic/random": [
     {
       "threshold": "slm_only",
-      "merchant_acc": 0.891,
-      "row_weighted": 0.891,
+      "merchant_acc": 0.899,
+      "row_weighted": 0.899,
       "acc_on_merchants_not_in_list": null,
       "escalated_to_slm": 1.0
     },
     {
       "threshold": 0.0,
-      "merchant_acc": 0.979,
-      "row_weighted": 0.979,
+      "merchant_acc": 0.985,
+      "row_weighted": 0.985,
       "acc_on_merchants_not_in_list": null,
-      "escalated_to_slm": 0.019
+      "escalated_to_slm": 0.011
     },
     {
       "threshold": 0.5,
-      "merchant_acc": 0.978,
-      "row_weighted": 0.978,
+      "merchant_acc": 0.98,
+      "row_weighted": 0.98,
       "acc_on_merchants_not_in_list": null,
-      "escalated_to_slm": 0.04
+      "escalated_to_slm": 0.024
     },
     {
       "threshold": 0.6,
-      "merchant_acc": 0.975,
-      "row_weighted": 0.975,
+      "merchant_acc": 0.977,
+      "row_weighted": 0.977,
       "acc_on_merchants_not_in_list": null,
-      "escalated_to_slm": 0.051
+      "escalated_to_slm": 0.039
     },
     {
       "threshold": 0.7,
-      "merchant_acc": 0.972,
-      "row_weighted": 0.972,
+      "merchant_acc": 0.975,
+      "row_weighted": 0.975,
       "acc_on_merchants_not_in_list": null,
-      "escalated_to_slm": 0.07
+      "escalated_to_slm": 0.053
     },
     {
       "threshold": 0.8,
-      "merchant_acc": 0.964,
-      "row_weighted": 0.964,
+      "merchant_acc": 0.969,
+      "row_weighted": 0.969,
       "acc_on_merchants_not_in_list": null,
-      "escalated_to_slm": 0.116
+      "escalated_to_slm": 0.089
     },
     {
       "threshold": 0.85,
-      "merchant_acc": 0.959,
-      "row_weighted": 0.959,
+      "merchant_acc": 0.967,
+      "row_weighted": 0.967,
       "acc_on_merchants_not_in_list": null,
-      "escalated_to_slm": 0.144
+      "escalated_to_slm": 0.113
     },
     {
       "threshold": 0.9,
-      "merchant_acc": 0.953,
-      "row_weighted": 0.953,
+      "merchant_acc": 0.964,
+      "row_weighted": 0.964,
       "acc_on_merchants_not_in_list": null,
-      "escalated_to_slm": 0.19
+      "escalated_to_slm": 0.148
     },
     {
       "threshold": 0.95,
-      "merchant_acc": 0.944,
-      "row_weighted": 0.944,
+      "merchant_acc": 0.957,
+      "row_weighted": 0.957,
       "acc_on_merchants_not_in_list": null,
-      "escalated_to_slm": 0.257
+      "escalated_to_slm": 0.212
     }
   ],
   "synthetic/unseen": [
     {
       "threshold": "slm_only",
-      "merchant_acc": 0.897,
-      "row_weighted": 0.897,
-      "acc_on_merchants_not_in_list": 0.897,
+      "merchant_acc": 0.893,
+      "row_weighted": 0.893,
+      "acc_on_merchants_not_in_list": 0.893,
       "escalated_to_slm": 1.0
     },
     {
       "threshold": 0.0,
-      "merchant_acc": 0.758,
-      "row_weighted": 0.758,
-      "acc_on_merchants_not_in_list": 0.758,
-      "escalated_to_slm": 0.822
+      "merchant_acc": 0.803,
+      "row_weighted": 0.803,
+      "acc_on_merchants_not_in_list": 0.803,
+      "escalated_to_slm": 0.873
     },
     {
       "threshold": 0.5,
-      "merchant_acc": 0.776,
-      "row_weighted": 0.776,
-      "acc_on_merchants_not_in_list": 0.776,
-      "escalated_to_slm": 0.845
+      "merchant_acc": 0.818,
+      "row_weighted": 0.818,
+      "acc_on_merchants_not_in_list": 0.818,
+      "escalated_to_slm": 0.889
     },
     {
       "threshold": 0.6,
-      "merchant_acc": 0.794,
-      "row_weighted": 0.794,
-      "acc_on_merchants_not_in_list": 0.794,
-      "escalated_to_slm": 0.871
+      "merchant_acc": 0.83,
+      "row_weighted": 0.83,
+      "acc_on_merchants_not_in_list": 0.83,
+      "escalated_to_slm": 0.91
     },
     {
       "threshold": 0.7,
-      "merchant_acc": 0.814,
-      "row_weighted": 0.814,
-      "acc_on_merchants_not_in_list": 0.814,
-      "escalated_to_slm": 0.904
+      "merchant_acc": 0.843,
+      "row_weighted": 0.843,
+      "acc_on_merchants_not_in_list": 0.843,
+      "escalated_to_slm": 0.937
     },
     {
       "threshold": 0.8,
-      "merchant_acc": 0.849,
-      "row_weighted": 0.849,
-      "acc_on_merchants_not_in_list": 0.849,
-      "escalated_to_slm": 0.945
+      "merchant_acc": 0.855,
+      "row_weighted": 0.855,
+      "acc_on_merchants_not_in_list": 0.855,
+      "escalated_to_slm": 0.95
     },
     {
       "threshold": 0.85,
-      "merchant_acc": 0.858,
-      "row_weighted": 0.858,
-      "acc_on_merchants_not_in_list": 0.858,
-      "escalated_to_slm": 0.958
+      "merchant_acc": 0.856,
+      "row_weighted": 0.856,
+      "acc_on_merchants_not_in_list": 0.856,
+      "escalated_to_slm": 0.953
     },
     {
       "threshold": 0.9,
-      "merchant_acc": 0.862,
-      "row_weighted": 0.862,
-      "acc_on_merchants_not_in_list": 0.862,
-      "escalated_to_slm": 0.961
+      "merchant_acc": 0.858,
+      "row_weighted": 0.858,
+      "acc_on_merchants_not_in_list": 0.858,
+      "escalated_to_slm": 0.957
     },
     {
       "threshold": 0.95,
-      "merchant_acc": 0.88,
-      "row_weighted": 0.88,
-      "acc_on_merchants_not_in_list": 0.88,
-      "escalated_to_slm": 0.981
+      "merchant_acc": 0.873,
+      "row_weighted": 0.873,
+      "acc_on_merchants_not_in_list": 0.873,
+      "escalated_to_slm": 0.979
     }
   ],
   "moneydata/known": [
@@ -139,38 +139,38 @@
     },
     {
       "threshold": 0.0,
-      "merchant_acc": 0.971,
-      "row_weighted": 0.961,
+      "merchant_acc": 0.965,
+      "row_weighted": 0.959,
       "acc_on_merchants_not_in_list": null,
-      "escalated_to_slm": 0.037
+      "escalated_to_slm": 0.042
     },
     {
       "threshold": 0.5,
-      "merchant_acc": 0.969,
-      "row_weighted": 0.96,
-      "acc_on_merchants_not_in_list": null,
-      "escalated_to_slm": 0.038
-    },
-    {
-      "threshold": 0.6,
-      "merchant_acc": 0.963,
-      "row_weighted": 0.958,
+      "merchant_acc": 0.962,
+      "row_weighted": 0.957,
       "acc_on_merchants_not_in_list": null,
       "escalated_to_slm": 0.046
     },
     {
-      "threshold": 0.7,
-      "merchant_acc": 0.956,
-      "row_weighted": 0.944,
+      "threshold": 0.6,
+      "merchant_acc": 0.962,
+      "row_weighted": 0.957,
       "acc_on_merchants_not_in_list": null,
-      "escalated_to_slm": 0.057
+      "escalated_to_slm": 0.049
+    },
+    {
+      "threshold": 0.7,
+      "merchant_acc": 0.958,
+      "row_weighted": 0.945,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.055
     },
     {
       "threshold": 0.8,
-      "merchant_acc": 0.949,
-      "row_weighted": 0.926,
+      "merchant_acc": 0.951,
+      "row_weighted": 0.927,
       "acc_on_merchants_not_in_list": null,
-      "escalated_to_slm": 0.068
+      "escalated_to_slm": 0.064
     },
     {
       "threshold": 0.85,
@@ -181,8 +181,8 @@
     },
     {
       "threshold": 0.9,
-      "merchant_acc": 0.934,
-      "row_weighted": 0.923,
+      "merchant_acc": 0.936,
+      "row_weighted": 0.924,
       "acc_on_merchants_not_in_list": null,
       "escalated_to_slm": 0.091
     },
@@ -191,7 +191,7 @@
       "merchant_acc": 0.921,
       "row_weighted": 0.914,
       "acc_on_merchants_not_in_list": null,
-      "escalated_to_slm": 0.139
+      "escalated_to_slm": 0.137
     }
   ],
   "moneydata/hold": [
@@ -211,24 +211,24 @@
     },
     {
       "threshold": 0.5,
-      "merchant_acc": 0.846,
-      "row_weighted": 0.857,
+      "merchant_acc": 0.848,
+      "row_weighted": 0.858,
       "acc_on_merchants_not_in_list": 0.619,
-      "escalated_to_slm": 0.367
+      "escalated_to_slm": 0.366
     },
     {
       "threshold": 0.6,
-      "merchant_acc": 0.846,
+      "merchant_acc": 0.848,
       "row_weighted": 0.857,
-      "acc_on_merchants_not_in_list": 0.624,
-      "escalated_to_slm": 0.371
+      "acc_on_merchants_not_in_list": 0.629,
+      "escalated_to_slm": 0.373
     },
     {
       "threshold": 0.7,
-      "merchant_acc": 0.846,
+      "merchant_acc": 0.848,
       "row_weighted": 0.857,
       "acc_on_merchants_not_in_list": 0.629,
-      "escalated_to_slm": 0.378
+      "escalated_to_slm": 0.375
     },
     {
       "threshold": 0.8,
@@ -249,14 +249,14 @@
       "merchant_acc": 0.835,
       "row_weighted": 0.837,
       "acc_on_merchants_not_in_list": 0.629,
-      "escalated_to_slm": 0.393
+      "escalated_to_slm": 0.397
     },
     {
       "threshold": 0.95,
       "merchant_acc": 0.834,
       "row_weighted": 0.837,
       "acc_on_merchants_not_in_list": 0.629,
-      "escalated_to_slm": 0.404
+      "escalated_to_slm": 0.406
     }
   ]
 }
