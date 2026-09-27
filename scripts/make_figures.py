@@ -1,189 +1,306 @@
-"""Generate the figures for the write-up from the recorded evaluation results
-(100k feed, eval-cap 1000, Qwen2.5-3B). Outputs PNGs to reports/figures/."""
+"""Generate the write-up figures from this run's recorded results (spec D7 step 4).
+
+No numbers are hardcoded: everything is read from
+  - reports/leaderboard_hard_jev.json  (written by `python -m tranx.cli eval
+    --name leaderboard_hard_jev.md`; a list of per-route/split/view result dicts)
+  - reports/significance.json          (written by scripts/significance.py)
+  - reports/real/moneydata_summary_high-medium_aliased.json (committed)
+
+Any missing input file is skipped with a printed warning; the figures that
+depend on it are not produced, but the script does not crash.
+
+Dropped in this revision (spec D7 step 4, D8): the LoRA route
+(slm_lora / lora_vs_fewshot.png) and the two static tables (table_engines.png,
+table_results.png) are no longer generated. Their old PNG files are left on
+disk as orphans -- see the note printed at the end of main().
+"""
+import argparse
+import json
 from pathlib import Path
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUT = Path(__file__).resolve().parent.parent / "reports" / "figures"
-OUT.mkdir(parents=True, exist_ok=True)
+ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_OUT = ROOT / "reports" / "figures"
+DEFAULT_LEADERBOARD = ROOT / "reports" / "leaderboard_hard_jev.json"
+DEFAULT_SIGNIFICANCE = ROOT / "reports" / "significance.json"
+DEFAULT_MONEYDATA = ROOT / "reports" / "real" / "moneydata_summary_high-medium_aliased.json"
 
-ROUTES = ["rules", "embedding", "slm_fewshot", "slm_lora"]
-COLORS = {"random": "#4C72B0", "unseen": "#DD8452"}
+# Preferred route order for the per-route figures; any route present in the
+# data but not listed here is appended at the end (nothing is dropped).
+MERCHANT_NORM_ROUTES = ["rules", "embedding", "slm_fewshot", "jev_merchant", "jev_slm", "cleaner"]
+CATEGORY_ROUTES = ["rules", "embedding", "slm_fewshot", "jev_merchant", "jev_slm"]
+LATENCY_ROUTE_ORDER = ["cleaner", "metadata", "rules", "embedding", "slm_fewshot",
+                       "jev_merchant", "jev_slm"]
+SPLIT_COLORS = {"random": "#4C72B0", "unseen": "#DD8452"}
 
-# Hard-feed results (Merchant Norm, Category Acc, ms/txn) per route per split.
-HARD = {
-    "rules":       {"random": {"norm": 0.74, "cat": 0.78, "ms": 0.5},
-                    "unseen": {"norm": 0.03, "cat": 0.57, "ms": 0.8}},
-    "embedding":   {"random": {"norm": 0.90, "cat": 0.92, "ms": 8.2},
-                    "unseen": {"norm": 0.00, "cat": 0.68, "ms": 8.1}},
-    "slm_fewshot": {"random": {"norm": 0.81, "cat": 0.71, "ms": 569.0},
-                    "unseen": {"norm": 0.78, "cat": 0.72, "ms": 582.0}},
-    "slm_lora":    {"random": {"norm": 0.87, "cat": 0.82, "ms": 712.0},
-                    "unseen": {"norm": 0.69, "cat": 0.76, "ms": 711.0}},
-}
+ORPHANED_FIGURES = ["lora_vs_fewshot.png", "table_engines.png", "table_results.png"]
 
 
-def _grouped(metric, title, ylabel, fname):
+def _load_json(path: Path):
+    """Returns the parsed JSON, or None (with a warning) if the file is missing."""
+    if path is None or not Path(path).exists():
+        print(f"make_figures: WARNING missing input {path}, skipping dependent figure(s)")
+        return None
+    return json.loads(Path(path).read_text())
+
+
+def _num(v):
+    """Leaderboard cells use the string '-' for not-applicable; treat as missing."""
+    return v if isinstance(v, (int, float)) else None
+
+
+def _order(present, preferred):
+    ordered = [r for r in preferred if r in present]
+    ordered += [r for r in present if r not in ordered]
+    return ordered
+
+
+def _rows_by_route_split(leaderboard, view):
+    """route -> split -> row, restricted to the given view."""
+    out = {}
+    for r in leaderboard:
+        if r.get("view") != view:
+            continue
+        out.setdefault(r["route"], {})[r["split"]] = r
+    return out
+
+
+def fig_merchant_norm(leaderboard, out_dir: Path):
+    """Model view, random vs unseen, merchant_norm per route with CI error bars.
+    `cleaner` is included as a reference bar (hatched, no CI is meaningful lift claim)."""
+    idx = _rows_by_route_split(leaderboard, "model")
+    routes = _order([r for r in MERCHANT_NORM_ROUTES if r in idx], MERCHANT_NORM_ROUTES)
+    routes = [r for r in routes if any(_num(idx[r].get(s, {}).get("merchant_norm")) is not None
+                                       for s in ("random", "unseen"))]
+    if not routes:
+        print("make_figures: no merchant_norm data, skipping merchant_norm.png")
+        return
     fig, ax = plt.subplots(figsize=(9, 5))
-    x = range(len(ROUTES))
+    x = range(len(routes))
     w = 0.38
+    cleaner_idx = routes.index("cleaner") if "cleaner" in routes else None
     for i, split in enumerate(["random", "unseen"]):
-        vals = [HARD[r][split][metric] for r in ROUTES]
-        bars = ax.bar([p + (i - 0.5) * w for p in x], vals, width=w,
-                      label=split, color=COLORS[split])
-        for b, v in zip(bars, vals):
-            ax.text(b.get_x() + b.get_width() / 2, v + 0.01, f"{v:.2f}",
-                    ha="center", va="bottom", fontsize=9)
+        vals, errs, present = [], [], []
+        for r in routes:
+            row = idx[r].get(split, {})
+            v = _num(row.get("merchant_norm"))
+            e = _num(row.get("merchant_norm_ci"))
+            vals.append(v if v is not None else 0.0)
+            errs.append(e if e is not None else 0.0)
+            present.append(v is not None)
+        bars = ax.bar([p + (i - 0.5) * w for p in x], vals, width=w, yerr=errs,
+                      label=split, color=SPLIT_COLORS[split], capsize=3)
+        for b, v, ok in zip(bars, vals, present):
+            if ok:
+                ax.text(b.get_x() + b.get_width() / 2, v + 0.02, f"{v:.2f}",
+                        ha="center", va="bottom", fontsize=9)
+        if cleaner_idx is not None:
+            bars[cleaner_idx].set_hatch("//")
+            bars[cleaner_idx].set_edgecolor("#444444")
+    labels = [f"{r}\n(reference)" if r == "cleaner" else r for r in routes]
     ax.set_xticks(list(x))
-    ax.set_xticklabels(ROUTES)
+    ax.set_xticklabels(labels)
     ax.set_ylim(0, 1.05)
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
+    ax.set_ylabel("merchant norm accuracy")
+    ax.set_title("Merchant normalization — model view, random vs unseen")
     ax.legend(title="split")
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
-    fig.savefig(OUT / fname, dpi=130)
+    fig.savefig(out_dir / "merchant_norm.png", dpi=130)
     plt.close(fig)
-    print("wrote", OUT / fname)
+    print("wrote", out_dir / "merchant_norm.png")
 
 
-def fig_latency():
+def fig_category(leaderboard, out_dir: Path):
+    """Model view, category_acc per route with CI error bars; the metadata-only
+    baseline is drawn as a horizontal reference line (it has no merchant score)."""
+    idx = _rows_by_route_split(leaderboard, "model")
+    routes = _order([r for r in CATEGORY_ROUTES if r in idx], CATEGORY_ROUTES)
+    routes = [r for r in routes if any(_num(idx[r].get(s, {}).get("category_acc")) is not None
+                                       for s in ("random", "unseen"))]
+    if not routes:
+        print("make_figures: no category data, skipping category.png")
+        return
+    fig, ax = plt.subplots(figsize=(9, 5))
+    x = range(len(routes))
+    w = 0.38
+    for i, split in enumerate(["random", "unseen"]):
+        vals, errs, present = [], [], []
+        for r in routes:
+            row = idx[r].get(split, {})
+            v = _num(row.get("category_acc"))
+            e = _num(row.get("category_ci"))
+            vals.append(v if v is not None else 0.0)
+            errs.append(e if e is not None else 0.0)
+            present.append(v is not None)
+        bars = ax.bar([p + (i - 0.5) * w for p in x], vals, width=w, yerr=errs,
+                      label=split, color=SPLIT_COLORS[split], capsize=3)
+        for b, v, ok in zip(bars, vals, present):
+            if ok:
+                ax.text(b.get_x() + b.get_width() / 2, v + 0.02, f"{v:.2f}",
+                        ha="center", va="bottom", fontsize=9)
+    meta = idx.get("metadata", {})
+    meta_row = meta.get("random") or meta.get("unseen")
+    if meta_row is not None and _num(meta_row.get("category_acc")) is not None:
+        ax.axhline(_num(meta_row["category_acc"]), color="#888888", linestyle="--",
+                   linewidth=1.3, label=f"metadata baseline ({meta_row['split']})")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(routes)
+    ax.set_ylim(0, 1.05)
+    ax.set_ylabel("category accuracy")
+    ax.set_title("Category accuracy — model view, random vs unseen")
+    ax.legend(title="split")
+    ax.grid(axis="y", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(out_dir / "category.png", dpi=130)
+    plt.close(fig)
+    print("wrote", out_dir / "category.png")
+
+
+def fig_latency(leaderboard, out_dir: Path):
+    """avg_ms per route (model view, random split preferred, unseen as fallback),
+    log scale."""
+    idx = _rows_by_route_split(leaderboard, "model")
+    routes, vals = [], []
+    for r in _order(list(idx.keys()), LATENCY_ROUTE_ORDER):
+        row = idx[r].get("random") or idx[r].get("unseen")
+        v = _num(row.get("avg_ms")) if row else None
+        if v is not None:
+            routes.append(r)
+            vals.append(v)
+    if not routes:
+        print("make_figures: no latency data, skipping latency.png")
+        return
     fig, ax = plt.subplots(figsize=(9, 4.5))
-    ms = [HARD[r]["random"]["ms"] for r in ROUTES]
-    bars = ax.bar(ROUTES, ms, color=["#55A868", "#55A868", "#C44E52", "#C44E52"])
-    for b, v in zip(bars, ms):
+    bars = ax.bar(routes, vals, color="#55A868")
+    for b, v in zip(bars, vals):
         ax.text(b.get_x() + b.get_width() / 2, v, f"{v:g} ms",
                 ha="center", va="bottom", fontsize=9)
     ax.set_yscale("log")
     ax.set_ylabel("ms / transaction (log scale)")
-    ax.set_title("Cost per transaction — ~3 orders of magnitude apart (~1,400×)")
+    ax.set_title("Cost per transaction — model view")
     ax.grid(axis="y", alpha=0.3, which="both")
     fig.tight_layout()
-    fig.savefig(OUT / "latency.png", dpi=130)
+    fig.savefig(out_dir / "latency.png", dpi=130)
     plt.close(fig)
-    print("wrote", OUT / "latency.png")
+    print("wrote", out_dir / "latency.png")
 
 
-def fig_lora_vs_fewshot():
-    fig, ax = plt.subplots(figsize=(9, 5))
-    groups = ["random\nCategory", "random\nMerchant", "unseen\nCategory", "unseen\nMerchant"]
-    few = [0.71, 0.81, 0.72, 0.78]
-    lora = [0.82, 0.87, 0.76, 0.69]
-    x = range(len(groups))
+def _forest_rows(significance: dict):
+    """Flattens {"primary": {...}, "exploratory": {...}} into an ordered list of
+    (key, section, entry) for entries that have a diff/lo/hi triple, plus the list
+    of (key, section) omitted because they were skipped."""
+    rows, skipped = [], []
+    for section in ("primary", "exploratory"):
+        for key, entry in (significance.get(section) or {}).items():
+            if not isinstance(entry, dict):
+                continue
+            if "skipped" in entry:
+                skipped.append(f"{key} ({section})")
+            elif {"diff", "lo", "hi"} <= set(entry):
+                rows.append((key, section, entry))
+    return rows, skipped
+
+
+def fig_significance(significance: dict, out_dir: Path):
+    """Forest plot of primary + exploratory paired diffs with CIs. Skipped
+    entries (missing preds) are omitted from the plot and noted in the caption."""
+    rows, skipped = _forest_rows(significance)
+    if not rows:
+        print("make_figures: no significance entries with a CI, skipping significance.png")
+        return
+    fig, ax = plt.subplots(figsize=(9, 1.1 + 0.55 * len(rows)))
+    y = list(range(len(rows)))[::-1]
+    for yi, (key, section, entry) in zip(y, rows):
+        diff, lo, hi = entry["diff"], entry["lo"], entry["hi"]
+        color = "#4C72B0" if section == "primary" else "#999999"
+        ax.errorbar([diff], [yi], xerr=[[diff - lo], [hi - diff]], fmt="o",
+                   color=color, ecolor=color, capsize=4, markersize=7)
+    ax.axvline(0, color="black", linewidth=0.8, linestyle="-")
+    ax.set_yticks(y)
+    ax.set_yticklabels([f"{key} ({section})" for key, section, _ in rows])
+    ax.set_xlabel("paired accuracy difference (route A - route B)")
+    title = "Paired significance: primary comparisons in blue, exploratory in gray"
+    if skipped:
+        title += f"\nomitted (missing predictions): {', '.join(skipped)}"
+    ax.set_title(title, fontsize=10)
+    ax.grid(axis="x", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(out_dir / "significance.png", dpi=130)
+    plt.close(fig)
+    print("wrote", out_dir / "significance.png")
+
+
+def fig_moneydata(summary: dict, out_dir: Path):
+    """MoneyData merchant accuracy per method: per-descriptor (distinct) vs
+    spend-weighted. Only methods carrying both numbers are plotted."""
+    methods, distinct, spend = [], [], []
+    for key, entry in summary.items():
+        if not isinstance(entry, dict):
+            continue
+        d, s = entry.get("distinct"), entry.get("spend_weighted")
+        if isinstance(d, (int, float)) and isinstance(s, (int, float)):
+            methods.append(key)
+            distinct.append(d)
+            spend.append(s)
+    if not methods:
+        print("make_figures: no MoneyData distinct/spend_weighted pairs, skipping moneydata.png")
+        return
+    fig, ax = plt.subplots(figsize=(max(9, 0.7 * len(methods)), 5))
+    x = range(len(methods))
     w = 0.38
-    b1 = ax.bar([p - w / 2 for p in x], few, width=w, label="few-shot", color="#8172B3")
-    b2 = ax.bar([p + w / 2 for p in x], lora, width=w, label="LoRA fine-tune", color="#CCB974")
+    b1 = ax.bar([p - w / 2 for p in x], distinct, width=w, label="per descriptor",
+               color="#4C72B0")
+    b2 = ax.bar([p + w / 2 for p in x], spend, width=w, label="spend-weighted",
+               color="#DD8452")
     for bars in (b1, b2):
         for b in bars:
             ax.text(b.get_x() + b.get_width() / 2, b.get_height() + 0.01,
-                    f"{b.get_height():.2f}", ha="center", va="bottom", fontsize=9)
+                    f"{b.get_height():.2f}", ha="center", va="bottom", fontsize=8)
     ax.set_xticks(list(x))
-    ax.set_xticklabels(groups)
-    ax.set_ylim(0, 1.0)
-    ax.set_ylabel("accuracy")
-    ax.set_title("Fine-tune vs few-shot (Qwen2.5-3B, hard feed)\n"
-                 "LoRA wins everywhere except unseen-merchant generalization")
+    ax.set_xticklabels(methods, rotation=30, ha="right")
+    ax.set_ylim(0, 1.05)
+    ax.set_ylabel("merchant accuracy")
+    ax.set_title("MoneyData merchant accuracy — per descriptor vs spend-weighted")
     ax.legend()
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
-    fig.savefig(OUT / "lora_vs_fewshot.png", dpi=130)
+    fig.savefig(out_dir / "moneydata.png", dpi=130)
     plt.close(fig)
-    print("wrote", OUT / "lora_vs_fewshot.png")
+    print("wrote", out_dir / "moneydata.png")
 
 
-def _heat(v):
-    """Green/yellow/red shading for a 0-1 accuracy cell."""
-    if v >= 0.70:
-        return "#C8E6C9"
-    if v >= 0.40:
-        return "#FFF3C4"
-    return "#F8C9C4"
+def run(leaderboard_path: Path, significance_path: Path, moneydata_path: Path, out_dir: Path):
+    out_dir.mkdir(parents=True, exist_ok=True)
+    leaderboard = _load_json(leaderboard_path)
+    if leaderboard is not None:
+        fig_merchant_norm(leaderboard, out_dir)
+        fig_category(leaderboard, out_dir)
+        fig_latency(leaderboard, out_dir)
+
+    significance = _load_json(significance_path)
+    if significance is not None:
+        fig_significance(significance, out_dir)
+
+    moneydata = _load_json(moneydata_path)
+    if moneydata is not None:
+        fig_moneydata(moneydata, out_dir)
 
 
-def _table(headers, rows, title, fname, col_widths, heat_cols=(), figsize=(11, 3)):
-    fig, ax = plt.subplots(figsize=figsize)
-    ax.axis("off")
-    tbl = ax.table(cellText=rows, colLabels=headers, cellLoc="center",
-                   colWidths=col_widths, loc="center")
-    tbl.auto_set_font_size(False)
-    tbl.set_fontsize(11)
-    tbl.scale(1, 1.6)
-    n_cols = len(headers)
-    # rows with multi-line cell text need extra height so they don't overlap
-    # the row below them.
-    row_lines = {0: 1}
-    for ridx, row in enumerate(rows, start=1):
-        row_lines[ridx] = max(str(cell_text).count("\n") + 1 for cell_text in row)
-    base_height = next(iter(tbl.get_celld().values())).get_height()
-    for (r, c), cell in tbl.get_celld().items():
-        cell.set_edgecolor("#DDDDDD")
-        lines = row_lines.get(r, 1)
-        if lines > 1:
-            cell.set_height(base_height * (lines * 0.65 + 0.35))
-        if r == 0:
-            cell.set_facecolor("#34495E")
-            cell.set_text_props(color="white", fontweight="bold")
-        else:
-            if c in heat_cols:
-                try:
-                    cell.set_facecolor(_heat(float(rows[r - 1][c])))
-                except ValueError:
-                    pass
-            elif r % 2 == 0:
-                cell.set_facecolor("#F7F7F7")
-        if c == 0 and r > 0:
-            cell.set_text_props(fontweight="bold")
-    ax.set_title(title, fontsize=13, fontweight="bold", pad=14)
-    fig.tight_layout()
-    fig.savefig(OUT / fname, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print("wrote", OUT / fname)
-
-
-def fig_engines_table():
-    headers = ["Route", "Merchant normalization", "Category", "Cost / txn"]
-    rows = [
-        ["rules", "regex clean + rapidfuzz token-set\nvs a learned merchant list",
-         "learned MCC & merchant priors", "<1 ms"],
-        ["embedding", "nearest canonical in\nMiniLM embedding space",
-         "logistic regression", "~8 ms"],
-        ["slm_fewshot", "Qwen2.5-3B few-shot (Ollama)", "the LLM", "~570 ms"],
-        ["slm_lora", "Qwen2.5-3B LoRA fine-tuned (MLX)", "the LLM", "~710 ms"],
-    ]
-    _table(headers, rows, "Four standardization engines", "table_engines.png",
-           col_widths=[0.16, 0.42, 0.27, 0.15], figsize=(11, 3.6))
-
-
-def fig_results_table():
-    headers = ["Route", "Split", "Category", "Merchant\n(exact)",
-               "Merchant\n(norm)", "ms / txn"]
-    rows = [
-        ["rules", "random", "0.78", "0.72", "0.74", "0.5"],
-        ["embedding", "random", "0.92", "0.90", "0.90", "8.2"],
-        ["slm_fewshot", "random", "0.71", "0.70", "0.81", "569"],
-        ["slm_lora", "random", "0.82", "0.85", "0.87", "712"],
-        ["rules", "unseen", "0.57", "0.00", "0.03", "0.8"],
-        ["embedding", "unseen", "0.68", "0.00", "0.00", "8.1"],
-        ["slm_fewshot", "unseen", "0.72", "0.67", "0.78", "582"],
-        ["slm_lora", "unseen", "0.76", "0.60", "0.69", "711"],
-    ]
-    _table(headers, rows,
-           "Results on the hard feed (Qwen2.5-3B, eval-cap 1000)\n"
-           "merchant-norm column shaded green/yellow/red",
-           "table_results.png",
-           col_widths=[0.18, 0.13, 0.16, 0.16, 0.16, 0.13],
-           heat_cols=(4,), figsize=(11, 4.4))
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--out-dir", type=Path, default=DEFAULT_OUT)
+    ap.add_argument("--leaderboard", type=Path, default=DEFAULT_LEADERBOARD)
+    ap.add_argument("--significance", type=Path, default=DEFAULT_SIGNIFICANCE)
+    ap.add_argument("--moneydata", type=Path, default=DEFAULT_MONEYDATA)
+    args = ap.parse_args()
+    run(args.leaderboard, args.significance, args.moneydata, args.out_dir)
+    print("make_figures: no longer generated (orphaned on disk if present): "
+         + ", ".join(ORPHANED_FIGURES))
 
 
 if __name__ == "__main__":
-    _grouped("norm",
-             "Merchant normalization on dirty descriptors\n"
-             "Only the few-shot SLM survives unseen merchants",
-             "Merchant Norm (case/punctuation-insensitive)", "merchant_norm.png")
-    _grouped("cat", "Category accuracy on dirty descriptors",
-             "Category Acc", "category.png")
-    fig_lora_vs_fewshot()
-    fig_latency()
-    fig_engines_table()
-    fig_results_table()
+    main()
