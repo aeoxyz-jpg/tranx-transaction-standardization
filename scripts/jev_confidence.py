@@ -21,21 +21,13 @@ from tranx import config
 from tranx.cli import _split_random, _split_unseen, _cap_eval
 from tranx.eval.metrics import _norm_merchant as norm
 from tranx.pipeline.clean import strip_processor_prefix
-from tranx.routes.jev import JevRoute, build_request, _jev_call, JEV_MODEL, NONE_OPTION
+from tranx.routes.jev import JevRoute, build_request, _jev_call, JEV_MODEL, NONE_OPTION, parse
 from tranx.schema import Txn
 import eval_moneydata as md
 
 TXN = ["txn_id", "customer_id", "description", "transaction_type_code", "mcc", "amount",
        "payment_method", "posted_date", "country", "currency"]
 THRESHOLDS = [0.0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95]
-
-
-def parse(ans: dict, key: str) -> dict:
-    a = ans.get("answers", {}).get(key, {})
-    probs = a.get("probabilities", {}) or {}
-    choice = a.get("choice")
-    return {"choice": choice, "confidence": a.get("confidence"),
-            "p_choice": probs.get(choice), "p_none": probs.get(NONE_OPTION)}
 
 
 def synthetic_rows():

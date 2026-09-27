@@ -72,6 +72,24 @@ def test_unknown_mcc_falls_back_to_merchant_then_default():
     assert out.category == "Transportation"
 
 
+def test_no_match_falls_back_to_cleaned_text_and_is_recorded():
+    r = RulesRoute()
+    r.fit(*_train())
+    txn = _txn("Totally Unknown Shop #123", amount=-5.0)
+    out = r.standardize(txn)
+    # no known merchant matches -> falls back to the cleaned text (user ruling),
+    # and the txn_id is recorded as a no-match.
+    assert out.canonical_merchant == "Totally Unknown Shop"
+    assert r.no_match_ids == {"Tx"}
+
+
+def test_matched_rows_are_not_recorded_as_no_match():
+    r = RulesRoute()
+    r.fit(*_train())
+    r.standardize(_txn("McDonald's #999"))
+    assert r.no_match_ids == set()
+
+
 def test_transaction_type_rows_still_teach_category():
     import polars as pl
     from tranx.routes.rules import RulesRoute

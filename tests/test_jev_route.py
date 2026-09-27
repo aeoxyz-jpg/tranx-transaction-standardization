@@ -100,6 +100,59 @@ def test_jev_slm_escalates_only_on_none():
     assert r.escalated == 1
 
 
+def test_jev_merchant_choice_records_none_ids_and_row_info():
+    feed = pl.DataFrame({"txn_id": ["a", "b"], "description": ["Cane's #1", "BP #2"],
+                         "mcc": [5814, 5541]})
+    gold = pl.DataFrame({"txn_id": ["a", "b"], "canonical_merchant": ["Cane's", "BP"],
+                         "category": ["Food & Dining", "Transportation"],
+                         "direction": ["outgoing", "outgoing"]})
+
+    def fake_none(payload):
+        return {"answers": {"category": {"choice": "Food & Dining", "confidence": 0.4},
+                            "merchant": {"choice": NONE_OPTION, "confidence": 0.2,
+                                        "probabilities": {NONE_OPTION: 0.6, "BP": 0.4}}}}
+
+    r = JevRoute(call_fn=fake_none, merchant_choice=True)
+    r.fit(feed, gold)
+    out = r.standardize(_txn(desc="Totally New Shop #9"))
+    assert out.canonical_merchant not in ("Cane's", "BP")
+    assert r.none_ids == {"t1"}
+    info = r.row_info["t1"]
+    assert set(info["candidates"]) == {"Cane's", "BP"}
+    assert info["jev_choice"] == NONE_OPTION
+    assert info["jev_confidence"] == 0.2
+    assert info["jev_p_choice"] == 0.6
+    assert info["jev_p_none"] == 0.6
+    assert info["jev_category_confidence"] == 0.4
+
+    def fake_hit(payload):
+        return {"answers": {"category": {"choice": "Transportation"},
+                            "merchant": {"choice": "BP", "confidence": 0.9,
+                                        "probabilities": {"BP": 0.9, NONE_OPTION: 0.1}}}}
+
+    r2 = JevRoute(call_fn=fake_hit, merchant_choice=True)
+    r2.fit(feed, gold)
+    out2 = r2.standardize(_txn(desc="BP #2", mcc=5541))
+    assert out2.canonical_merchant == "BP"
+    assert r2.none_ids == set()
+    assert r2.row_info["t1"]["jev_choice"] == "BP"
+    assert r2.row_info["t1"]["jev_p_none"] == 0.1
+
+
+def test_row_info_recorded_even_without_merchant_choice():
+    feed = pl.DataFrame({"txn_id": ["a"], "description": ["Cane's"], "mcc": [5814]})
+    gold = pl.DataFrame({"txn_id": ["a"], "canonical_merchant": ["Cane's"],
+                         "category": ["Food & Dining"], "direction": ["outgoing"]})
+    r = JevRoute(call_fn=lambda p: {"answers": {"category": {"choice": "Food & Dining",
+                                                              "confidence": 0.7}}})
+    r.fit(feed, gold)
+    r.standardize(_txn(desc="Cane's #1"))
+    info = r.row_info["t1"]
+    assert info["candidates"] is None
+    assert info["jev_choice"] is None
+    assert info["jev_category_confidence"] == 0.7
+
+
 def test_jev_call_retries_transient_5xx(monkeypatch):
     import requests
     from tranx.routes import jev

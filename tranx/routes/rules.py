@@ -27,6 +27,10 @@ class RulesRoute(Route):
         self._merchant_to_category: dict[str, str] = {}
         self._mcc_to_category: dict[int, str] = {}
         self._default_category = "Shopping & Retail"
+        # txn_ids where the fuzzy matcher had no hit above score_cutoff and fell
+        # back to the cleaned text (user ruling 2026-09-28: no-match still returns
+        # the cleaned text; this set lets the eval report a no_match_rate).
+        self.no_match_ids: set[str] = set()
 
     def fit(self, train_feed: pl.DataFrame, train_gold: pl.DataFrame) -> None:
         joined = train_feed.join(train_gold, on="txn_id")
@@ -56,23 +60,29 @@ class RulesRoute(Route):
             self._default_category = all_cats.row(0)[0]
 
     def _match_merchant(self, description: str) -> str:
+        merchant, _matched = self._match_merchant_full(description)
+        return merchant
+
+    def _match_merchant_full(self, description: str) -> tuple[str, bool]:
         stripped = strip_processor_prefix(description)
         query = clean_description(derive_canonical(stripped))
         names = {**self._type_clean_to_name, **self._canon_clean_to_name}
         keys = list(names.keys())
         if not keys:
-            return derive_canonical(stripped)
+            return derive_canonical(stripped), False
         # token_set_ratio tolerates embedded city/state/store-id tokens that hard
         # descriptors carry, without enumerating any noise vocabulary, while still
         # rejecting merchants that merely share a token (e.g. a common city).
         match = process.extractOne(query, keys, scorer=fuzz.token_set_ratio,
                                    score_cutoff=self.score_cutoff)
         if match:
-            return names[match[0]]
-        return derive_canonical(stripped)
+            return names[match[0]], True
+        return derive_canonical(stripped), False
 
     def standardize(self, txn: Txn) -> Standardized:
-        merchant = self._match_merchant(txn.description)
+        merchant, matched = self._match_merchant_full(txn.description)
+        if not matched:
+            self.no_match_ids.add(txn.txn_id)
         direction = "incoming" if txn.amount > 0 else "outgoing"
         if txn.mcc is not None and txn.mcc in self._mcc_to_category:
             category = self._mcc_to_category[txn.mcc]

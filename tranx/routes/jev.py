@@ -43,6 +43,16 @@ def build_request(txn: Txn, categories: list[str], model: str,
     return {"state": state, "model": model, "questions": questions}
 
 
+def parse(ans: dict, key: str) -> dict:
+    """Pull choice/confidence/probabilities for one Choice question out of a raw
+    Jev response. `key` is "merchant" or "category"."""
+    a = ans.get("answers", {}).get(key, {})
+    probs = a.get("probabilities", {}) or {}
+    choice = a.get("choice")
+    return {"choice": choice, "confidence": a.get("confidence"),
+            "p_choice": probs.get(choice), "p_none": probs.get(NONE_OPTION)}
+
+
 def _jev_call(payload: dict) -> dict:
     import requests
     key = os.environ.get("TYPESAFE_API_KEY")
@@ -84,6 +94,11 @@ class JevRoute(Route):
             self.name = "jev_merchant"
         self.escalated = 0
         self.escalated_ids: set[str] = set()
+        # txn_ids where the merchant Choice returned none_of_these or anything not
+        # in the candidate list (retrieval miss or a truly new merchant).
+        self.none_ids: set[str] = set()
+        # Per txn_id: candidates offered, merchant Choice fields, category confidence.
+        self.row_info: dict[str, dict] = {}
         self._rules = RulesRoute()
         self._categories = config.CATEGORIES
         self._default_category = "Shopping & Retail"
@@ -115,16 +130,20 @@ class JevRoute(Route):
         answer = self._call(build_request(txn, self._categories, self._model, candidates))
         answers = answer.get("answers", {})
         self.input_tokens += int(answer.get("usage", {}).get("input_tokens", 0))
+        m_info = parse(answer, "merchant") if candidates else {
+            "choice": None, "confidence": None, "p_choice": None, "p_none": None}
         if candidates:
-            pick = answers.get("merchant", {}).get("choice")
+            pick = m_info["choice"]
             if pick in candidates:
                 merchant = pick
-            elif self._fallback is not None:
-                self.escalated += 1
-                self.escalated_ids.add(txn.txn_id)
-                merchant = self._fallback.standardize(txn).canonical_merchant
             else:
-                merchant = derive_canonical(stripped)
+                self.none_ids.add(txn.txn_id)
+                if self._fallback is not None:
+                    self.escalated += 1
+                    self.escalated_ids.add(txn.txn_id)
+                    merchant = self._fallback.standardize(txn).canonical_merchant
+                else:
+                    merchant = derive_canonical(stripped)
         else:
             merchant = self._rules._match_merchant(txn.description)
         ans = answers.get("category", {})
@@ -133,5 +152,13 @@ class JevRoute(Route):
             category = self._default_category
         if "confidence" in ans:
             self.confidences.append(float(ans["confidence"]))
+        self.row_info[txn.txn_id] = {
+            "candidates": candidates if candidates else None,
+            "jev_choice": m_info["choice"],
+            "jev_confidence": m_info["confidence"],
+            "jev_p_choice": m_info["p_choice"],
+            "jev_p_none": m_info["p_none"],
+            "jev_category_confidence": ans.get("confidence"),
+        }
         return Standardized(canonical_merchant=merchant, category=category,
                             direction=direction)
