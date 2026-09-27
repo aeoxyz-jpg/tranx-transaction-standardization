@@ -2,11 +2,13 @@
 confidence threshold: accept Jev's pick when it is not none_of_these and its
 confidence >= t, otherwise use the few-shot SLM's merchant.
 
-Reuses the per-row Jev answers from scripts/jev_confidence.py (no new Jev calls).
-Runs the SLM once per synthetic eval row (cached to
-reports/real/slm_synthetic_rows.parquet); MoneyData SLM predictions come from
-scripts/eval_moneydata.py. Writes reports/jev_threshold_cascade.json.
+Synthetic: this run's saved jev_merchant and slm_fewshot model-view predictions
+(reports/preds, checked against reports/run/manifest.json), joined on txn_id; no
+model calls. MoneyData: Jev answers from scripts/jev_confidence.py's per-row parquet
+(or, with --synthetic-only, reports/real/jev_confidence_moneydata_rows.parquet), SLM
+predictions from scripts/eval_moneydata.py. Writes reports/jev_threshold_cascade.json.
 """
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -16,40 +18,30 @@ import polars as pl
 
 sys.path.insert(0, str(Path(__file__).parent))
 from tranx import config
-from tranx.cli import _split_random, _split_unseen, _cap_eval
+from tranx.eval.manifest import ManifestError, load_preds
 from tranx.eval.metrics import _norm_merchant as norm
 from tranx.routes.jev import NONE_OPTION
-from tranx.routes.slm_fewshot import SlmFewshotRoute
-from tranx.schema import Txn
 import eval_moneydata as md
+import jev_confidence as jc
 
-TXN = ["txn_id", "customer_id", "description", "transaction_type_code", "mcc", "amount",
-       "payment_method", "posted_date", "country", "currency"]
 THRESHOLDS = [0.0, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95]
 REAL = config.REPORTS_DIR / "real"
 
 
-def synthetic_slm() -> pl.DataFrame:
-    cache = REAL / "slm_synthetic_rows.parquet"
-    if cache.exists():
-        return pl.read_parquet(cache)
-    feed = pl.read_parquet(config.DATA_DIR / "bank_feed.parquet")
-    gold = pl.read_parquet(config.DATA_DIR / "gold.parquet")
-    out = []
-    for split, fn in (("random", _split_random), ("unseen", _split_unseen)):
-        tf, tg, ef, eg = fn(feed, gold, config.SEED)
-        ef, eg = _cap_eval(ef, eg, 1000, config.SEED)
-        eg = eg.filter(pl.col("canonical_merchant").is_not_null())  # same rows as jev_confidence
-        ef = ef.filter(pl.col("txn_id").is_in(eg["txn_id"]))
-        route = SlmFewshotRoute()
-        route.fit(tf, tg)
-        for i, r in enumerate(ef.select(TXN).iter_rows(named=True)):
-            out.append({"setting": split, "i": i, "description": r["description"],
-                        "slm": route.standardize(Txn(**r)).canonical_merchant})
-        print(f"slm {split}: {len(ef)} rows", flush=True)
-    df = pl.DataFrame(out)
-    df.write_parquet(cache)
-    return df
+def synthetic_cascade_rows(manifest: dict, preds_dir: Path | None, data_dir: Path) -> dict:
+    """Per split: Jev rows (choice, confidence, gold, gold_in_list) with the SLM's
+    merchant for the same txn_id."""
+    jev = jc.synthetic_rows(manifest, preds_dir, data_dir)
+    out = {}
+    for split in ("random", "unseen"):
+        j = jev.filter(pl.col("setting") == split)
+        s = load_preds(split, "model", "slm_fewshot", manifest, preds_dir).select(
+            "txn_id", pl.col("pred_merchant").alias("slm"))
+        d = j.join(s, on="txn_id", how="inner")
+        if len(d) != len(j):
+            raise ManifestError(f"{split}: slm_fewshot preds cover {len(d)} of {len(j)} jev rows")
+        out[split] = d.sort("txn_id")
+    return out
 
 
 def sweep(d: pl.DataFrame, is_ok) -> list[dict]:
@@ -69,15 +61,25 @@ def sweep(d: pl.DataFrame, is_ok) -> list[dict]:
     return rows
 
 
-def main():
-    rows = pl.read_parquet(REAL / "jev_confidence_rows.parquet")
+def main(argv=None):
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--manifest", type=Path, default=config.RUN_DIR / "manifest.json")
+    ap.add_argument("--preds-dir", type=Path, default=config.PREDS_DIR)
+    ap.add_argument("--data-dir", type=Path, default=config.DATA_DIR)
+    ap.add_argument("--synthetic-only", action="store_true",
+                    help="read MoneyData Jev rows from --moneydata-rows instead of --rows")
+    ap.add_argument("--rows", type=Path, default=REAL / "jev_confidence_rows.parquet")
+    ap.add_argument("--moneydata-rows", type=Path, default=jc.MONEYDATA_ROWS)
+    ap.add_argument("--out", type=Path, default=config.REPORTS_DIR / "jev_threshold_cascade.json")
+    args = ap.parse_args(argv)
+
+    if args.synthetic_only:
+        rows = jc.saved_moneydata_rows(args.moneydata_rows)
+    else:
+        rows = pl.read_parquet(args.rows)
+    manifest = jc.load_manifest(args.manifest)
     res = {}
-    slm = synthetic_slm()
-    for split in ("random", "unseen"):
-        j = rows.filter((pl.col("dataset") == "synthetic") & (pl.col("setting") == split))
-        s = slm.filter(pl.col("setting") == split).sort("i")
-        assert j["description"].to_list() == s["description"].to_list(), "row order mismatch"
-        d = j.with_columns(s["slm"])
+    for split, d in synthetic_cascade_rows(manifest, args.preds_dir, args.data_dir).items():
         res[f"synthetic/{split}"] = sweep(d, lambda p, g: norm(p or "") == norm(g or ""))
 
     for r in pl.read_csv(config.DATA_DIR / "real" / "moneydata_aliases.csv").iter_rows(named=True):
@@ -89,8 +91,12 @@ def main():
         assert d["slm"].null_count() == 0
         res[f"moneydata/{setting}"] = sweep(d, lambda p, g: norm(p or "") in md.accepted(g))
 
-    (config.REPORTS_DIR / "jev_threshold_cascade.json").write_text(json.dumps(res, indent=2))
+    res["manifest_hash"] = manifest["manifest_hash"]
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(res, indent=2))
     for k, v in res.items():
+        if k == "manifest_hash":
+            continue
         print("==", k)
         for r in v:
             print("  ", r)

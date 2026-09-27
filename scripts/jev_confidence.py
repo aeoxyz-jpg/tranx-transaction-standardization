@@ -2,12 +2,16 @@
 threshold separates right from wrong picks.
 
 Datasets:
-  synthetic hard feed, random + unseen splits (1000 eval rows each, same rows as
-  the leaderboard); MoneyData real descriptors, known list + 20%-held-out list.
+  synthetic hard feed, random + unseen model views: read from this run's saved
+  jev_merchant predictions (reports/preds, checked against reports/run/manifest.json);
+  MoneyData real descriptors, known list + 20%-held-out list (Jev API calls, or with
+  --synthetic-only the saved rows in reports/real/jev_confidence_moneydata_rows.parquet).
 
 Writes reports/real/jev_confidence_rows.parquet (per row, gitignored) and
-reports/jev_confidence_summary.json. Usage: python scripts/jev_confidence.py
+reports/jev_confidence_summary.json.
+Usage: python scripts/jev_confidence.py [--synthetic-only] [--extract-moneydata]
 """
+import argparse
 import json
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -18,51 +22,74 @@ import polars as pl
 
 sys.path.insert(0, str(Path(__file__).parent))
 from tranx import config
-from tranx.cli import _split_random, _split_unseen, _cap_eval
+from tranx.cli import eval_rows
+from tranx.eval.manifest import ManifestError, file_sha256, load_preds
 from tranx.eval.metrics import _norm_merchant as norm
-from tranx.pipeline.clean import strip_processor_prefix
-from tranx.routes.jev import JevRoute, build_request, _jev_call, JEV_MODEL, NONE_OPTION, parse
-from tranx.schema import Txn
+from tranx.routes.jev import _jev_call, JEV_MODEL, NONE_OPTION, parse
 import eval_moneydata as md
 
-TXN = ["txn_id", "customer_id", "description", "transaction_type_code", "mcc", "amount",
-       "payment_method", "posted_date", "country", "currency"]
 THRESHOLDS = [0.0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95]
+REAL = config.REPORTS_DIR / "real"
+MONEYDATA_ROWS = REAL / "jev_confidence_moneydata_rows.parquet"
 
 
-def synthetic_rows():
-    feed = pl.read_parquet(config.DATA_DIR / "bank_feed.parquet")
-    gold = pl.read_parquet(config.DATA_DIR / "gold.parquet")
+def load_manifest(path: Path) -> dict:
+    return json.loads(Path(path).read_text())
+
+
+def train_vocab(split: str, manifest: dict, data_dir: Path) -> set:
+    """Normalised train merchants of `split`, rebuilt from the feed/gold the
+    manifest was built on (refused if their sha256 differs)."""
+    feed_path, gold_path = Path(data_dir) / "bank_feed.parquet", Path(data_dir) / "gold.parquet"
+    if (file_sha256(feed_path) != manifest["feed_sha256"]
+            or file_sha256(gold_path) != manifest["gold_sha256"]):
+        raise ManifestError(f"{data_dir}: feed/gold sha256 differs from the manifest")
+    er = eval_rows(split, "model", pl.read_parquet(feed_path), pl.read_parquet(gold_path),
+                   caps=manifest["caps"], seed=manifest["seed"])
+    return {norm(v) for v in er.train_gold["canonical_merchant"].drop_nulls().unique()}
+
+
+def synthetic_rows(manifest: dict, preds_dir: Path | None, data_dir: Path) -> pl.DataFrame:
+    """Per-row Jev merchant answers on the model view of both splits, from the
+    saved jev_merchant predictions (no Jev calls)."""
     out = []
-    for split, fn in (("random", _split_random), ("unseen", _split_unseen)):
-        tf, tg, ef, eg = fn(feed, gold, config.SEED)
-        ef, eg = _cap_eval(ef, eg, 1000, config.SEED)
+    for split in ("random", "unseen"):
+        p = load_preds(split, "model", "jev_merchant", manifest, preds_dir)
         # merchant question only makes sense where the gold has a merchant
-        eg = eg.filter(pl.col("canonical_merchant").is_not_null())
-        ef = ef.filter(pl.col("txn_id").is_in(eg["txn_id"]))
-        route = JevRoute(merchant_choice=True)
-        route.fit(tf, tg)
-        g = dict(zip(eg["txn_id"], eg["canonical_merchant"]))
-        gc = dict(zip(eg["txn_id"], eg["category"]))
-        vocab = {norm(v) for v in tg["canonical_merchant"].drop_nulls().unique()}
-        txns = [Txn(**r) for r in ef.select(TXN).iter_rows(named=True)]
+        p = p.filter(pl.col("gold_merchant").is_not_null()).sort("txn_id")
+        vocab = train_vocab(split, manifest, data_dir)
+        for r in p.iter_rows(named=True):
+            choice, gold_m = r["jev_choice"], r["gold_merchant"]
+            out.append({"dataset": "synthetic", "setting": split, "txn_id": r["txn_id"],
+                        "description": r["description"], "gold": gold_m,
+                        "choice": choice, "confidence": r["jev_confidence"],
+                        "p_choice": r["jev_p_choice"], "p_none": r["jev_p_none"],
+                        "correct": choice != NONE_OPTION and norm(choice or "") == norm(gold_m),
+                        "gold_in_list": norm(gold_m) in vocab,
+                        "gold_in_cands": norm(gold_m) in {norm(x) for x in (r["candidates"] or [])},
+                        "cat_choice": r["pred_category"],
+                        "cat_confidence": r["jev_category_confidence"],
+                        "cat_correct": r["pred_category"] == r["gold_category"]})
+        print(f"synthetic {split}: {len(p)} rows", flush=True)
+    return pl.DataFrame(out, infer_schema_length=None)
 
-        def one(t):
-            cands = route._candidates(strip_processor_prefix(t.description))
-            ans = _jev_call(build_request(t, route._categories, JEV_MODEL, cands))
-            m, c = parse(ans, "merchant"), parse(ans, "category")
-            gold_m = g[t.txn_id]
-            return {"dataset": "synthetic", "setting": split, "description": t.description,
-                    "gold": gold_m, **m,
-                    "correct": m["choice"] != NONE_OPTION and norm(m["choice"] or "") == norm(gold_m),
-                    "gold_in_list": norm(gold_m) in vocab,
-                    "gold_in_cands": norm(gold_m) in {norm(x) for x in cands},
-                    "cat_choice": c["choice"], "cat_confidence": c["confidence"],
-                    "cat_correct": c["choice"] == gc[t.txn_id]}
-        with ThreadPoolExecutor(max_workers=8) as ex:
-            out += list(ex.map(one, txns))
-        print(f"synthetic {split}: {len(txns)} rows", flush=True)
-    return out
+
+def saved_moneydata_rows(path: Path) -> pl.DataFrame:
+    path = Path(path)
+    if not path.exists():
+        raise SystemExit(f"--synthetic-only needs the saved MoneyData Jev rows at {path}; "
+                         "create them with --extract-moneydata before deleting "
+                         "reports/real/jev_confidence_rows.parquet")
+    return pl.read_parquet(path)
+
+
+def extract_moneydata(rows_path: Path, out_path: Path) -> Path:
+    """Copy the MoneyData rows of an existing per-row parquet to `out_path`."""
+    rows = pl.read_parquet(rows_path).filter(pl.col("dataset") == "moneydata")
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    rows.write_parquet(out_path)
+    print(f"{len(rows)} moneydata rows -> {out_path}")
+    return Path(out_path)
 
 
 def moneydata_rows():
@@ -134,12 +161,35 @@ def summarize(rows: pl.DataFrame) -> dict:
     return res
 
 
-def main():
-    out_rows = config.REPORTS_DIR / "real" / "jev_confidence_rows.parquet"
-    rows = pl.DataFrame(synthetic_rows() + moneydata_rows(), infer_schema_length=None)
-    rows.write_parquet(out_rows)
-    summary = summarize(rows)
-    (config.REPORTS_DIR / "jev_confidence_summary.json").write_text(json.dumps(summary, indent=2))
+def main(argv=None):
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--manifest", type=Path, default=config.RUN_DIR / "manifest.json")
+    ap.add_argument("--preds-dir", type=Path, default=config.PREDS_DIR)
+    ap.add_argument("--data-dir", type=Path, default=config.DATA_DIR)
+    ap.add_argument("--synthetic-only", action="store_true",
+                    help="no MoneyData API calls: reuse the saved MoneyData rows")
+    ap.add_argument("--extract-moneydata", action="store_true",
+                    help="only copy the MoneyData rows of --rows to --moneydata-rows")
+    ap.add_argument("--rows", type=Path, default=REAL / "jev_confidence_rows.parquet")
+    ap.add_argument("--moneydata-rows", type=Path, default=MONEYDATA_ROWS)
+    ap.add_argument("--summary", type=Path, default=config.REPORTS_DIR / "jev_confidence_summary.json")
+    args = ap.parse_args(argv)
+
+    if args.extract_moneydata:
+        extract_moneydata(args.rows, args.moneydata_rows)
+        return
+    # Check the MoneyData source before the (slower) synthetic part.
+    mrows = saved_moneydata_rows(args.moneydata_rows) if args.synthetic_only else None
+    manifest = load_manifest(args.manifest)
+    srows = synthetic_rows(manifest, args.preds_dir, args.data_dir)
+    if mrows is None:
+        mrows = pl.DataFrame(moneydata_rows(), infer_schema_length=None)
+    rows = pl.concat([srows, mrows], how="diagonal_relaxed")
+    args.rows.parent.mkdir(parents=True, exist_ok=True)
+    rows.write_parquet(args.rows)
+    summary = {**summarize(rows), "manifest_hash": manifest["manifest_hash"]}
+    args.summary.parent.mkdir(parents=True, exist_ok=True)
+    args.summary.write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary, indent=2))
 
 
