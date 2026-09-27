@@ -13,6 +13,7 @@ _FORMAT = re.compile(
     re.IGNORECASE,
 )
 _WS = re.compile(r"\s+")
+_TRAILING_HOSPITAL = re.compile(r"(?<=\S)\s+Hospital$", re.IGNORECASE)
 _DANGLING = re.compile(r"(^[\s\-]+|[\s\-]+$)")
 
 
@@ -32,7 +33,10 @@ def derive_canonical(description: str) -> str:
     s = s.replace(" - ", " ")
     s = _WS.sub(" ", s)
     s = _DANGLING.sub("", s)
-    return s.strip()
+    s = s.strip()
+    if s not in config.HOSPITAL_MERCHANTS:
+        s = _TRAILING_HOSPITAL.sub("", s)
+    return s
 
 
 def strip_coverage(descriptions: list[str]) -> float:

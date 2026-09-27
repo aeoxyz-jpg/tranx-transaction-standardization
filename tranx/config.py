@@ -39,13 +39,19 @@ MLX_BASE = "mlx-community/Qwen2.5-3B-Instruct-4bit"  # base for the LoRA route
 
 # Noise vocabulary used to derive canonical merchant names (see synth/canonical.py)
 FORMAT_WORDS = [
+    # multi-word phrases first: the regex alternation matches in list order
+    "Shopping Center", "Business District",
     "Online", "Store", "Branch", "Center", "Station",
-    "Strip Mall", "Mall", "Downtown", "Residential",
+    "Strip Mall", "Mall", "Downtown", "Residential", "Airport", "Campus",
 ]
 TIME_PHRASES = [
     "Night", "Evening", "Afternoon", "Morning", "Rush Hour",
-    "Lunch Time", "Dinner Time", "Weekend", "Holiday",
+    "Lunch Time", "Dinner Time", "Weekend", "Weekday", "Holiday",
 ]
+# "Hospital" is both a location suffix in the source templates ("Donation Hospital",
+# "Burlington Store Branch Hospital") and part of real merchant names. It is
+# stripped only as a trailing word after another token, except for these names.
+HOSPITAL_MERCHANTS = {"Children's Hospital"}
 # Hard-mode descriptor synthesis: mimic the dirt real card-network descriptors
 # carry (aggregator prefixes, embedded geo/store ids, truncation, uppercasing).
 HARD_PREFIXES = [

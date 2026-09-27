@@ -15,6 +15,20 @@ from tranx.synth.canonical import derive_canonical, strip_coverage
     ("Disney+ #2115", "Disney+"),
     ("Barnes & Noble #9059", "Barnes & Noble"),
     ("Wage", "Wage"),
+    # source-template location/time suffixes (split brands into fake merchants before)
+    ("Walmart Pharmacy Shopping Center", "Walmart Pharmacy"),
+    ("Rally's Business District", "Rally's"),
+    ("Delta Airport", "Delta"),
+    ("MBTA Campus", "MBTA"),
+    ("Domino's - Weekday", "Domino's"),
+    ("Burlington Store Branch Hospital", "Burlington"),
+    ("Donation Hospital", "Donation"),
+    # genuine hospital merchants survive
+    ("Hospital", "Hospital"),
+    ("Hospital #9559", "Hospital"),
+    ("Hospital Airport", "Hospital"),
+    ("Children's Hospital Airport", "Children's Hospital"),
+    ("Children's Hospital", "Children's Hospital"),
 ])
 def test_derive_canonical(raw, expected):
     assert derive_canonical(raw) == expected
