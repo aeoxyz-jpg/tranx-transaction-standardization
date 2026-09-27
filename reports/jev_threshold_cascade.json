@@ -1,0 +1,262 @@
+{
+  "synthetic/random": [
+    {
+      "threshold": "slm_only",
+      "merchant_acc": 0.891,
+      "row_weighted": 0.891,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 1.0
+    },
+    {
+      "threshold": 0.0,
+      "merchant_acc": 0.979,
+      "row_weighted": 0.979,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.019
+    },
+    {
+      "threshold": 0.5,
+      "merchant_acc": 0.978,
+      "row_weighted": 0.978,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.04
+    },
+    {
+      "threshold": 0.6,
+      "merchant_acc": 0.975,
+      "row_weighted": 0.975,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.051
+    },
+    {
+      "threshold": 0.7,
+      "merchant_acc": 0.972,
+      "row_weighted": 0.972,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.07
+    },
+    {
+      "threshold": 0.8,
+      "merchant_acc": 0.964,
+      "row_weighted": 0.964,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.116
+    },
+    {
+      "threshold": 0.85,
+      "merchant_acc": 0.959,
+      "row_weighted": 0.959,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.144
+    },
+    {
+      "threshold": 0.9,
+      "merchant_acc": 0.953,
+      "row_weighted": 0.953,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.19
+    },
+    {
+      "threshold": 0.95,
+      "merchant_acc": 0.944,
+      "row_weighted": 0.944,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.257
+    }
+  ],
+  "synthetic/unseen": [
+    {
+      "threshold": "slm_only",
+      "merchant_acc": 0.897,
+      "row_weighted": 0.897,
+      "acc_on_merchants_not_in_list": 0.897,
+      "escalated_to_slm": 1.0
+    },
+    {
+      "threshold": 0.0,
+      "merchant_acc": 0.758,
+      "row_weighted": 0.758,
+      "acc_on_merchants_not_in_list": 0.758,
+      "escalated_to_slm": 0.822
+    },
+    {
+      "threshold": 0.5,
+      "merchant_acc": 0.776,
+      "row_weighted": 0.776,
+      "acc_on_merchants_not_in_list": 0.776,
+      "escalated_to_slm": 0.845
+    },
+    {
+      "threshold": 0.6,
+      "merchant_acc": 0.794,
+      "row_weighted": 0.794,
+      "acc_on_merchants_not_in_list": 0.794,
+      "escalated_to_slm": 0.871
+    },
+    {
+      "threshold": 0.7,
+      "merchant_acc": 0.814,
+      "row_weighted": 0.814,
+      "acc_on_merchants_not_in_list": 0.814,
+      "escalated_to_slm": 0.904
+    },
+    {
+      "threshold": 0.8,
+      "merchant_acc": 0.849,
+      "row_weighted": 0.849,
+      "acc_on_merchants_not_in_list": 0.849,
+      "escalated_to_slm": 0.945
+    },
+    {
+      "threshold": 0.85,
+      "merchant_acc": 0.858,
+      "row_weighted": 0.858,
+      "acc_on_merchants_not_in_list": 0.858,
+      "escalated_to_slm": 0.958
+    },
+    {
+      "threshold": 0.9,
+      "merchant_acc": 0.862,
+      "row_weighted": 0.862,
+      "acc_on_merchants_not_in_list": 0.862,
+      "escalated_to_slm": 0.961
+    },
+    {
+      "threshold": 0.95,
+      "merchant_acc": 0.88,
+      "row_weighted": 0.88,
+      "acc_on_merchants_not_in_list": 0.88,
+      "escalated_to_slm": 0.981
+    }
+  ],
+  "moneydata/known": [
+    {
+      "threshold": "slm_only",
+      "merchant_acc": 0.804,
+      "row_weighted": 0.815,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 1.0
+    },
+    {
+      "threshold": 0.0,
+      "merchant_acc": 0.971,
+      "row_weighted": 0.961,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.037
+    },
+    {
+      "threshold": 0.5,
+      "merchant_acc": 0.969,
+      "row_weighted": 0.96,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.038
+    },
+    {
+      "threshold": 0.6,
+      "merchant_acc": 0.963,
+      "row_weighted": 0.958,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.046
+    },
+    {
+      "threshold": 0.7,
+      "merchant_acc": 0.956,
+      "row_weighted": 0.944,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.057
+    },
+    {
+      "threshold": 0.8,
+      "merchant_acc": 0.949,
+      "row_weighted": 0.926,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.068
+    },
+    {
+      "threshold": 0.85,
+      "merchant_acc": 0.945,
+      "row_weighted": 0.926,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.077
+    },
+    {
+      "threshold": 0.9,
+      "merchant_acc": 0.934,
+      "row_weighted": 0.923,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.091
+    },
+    {
+      "threshold": 0.95,
+      "merchant_acc": 0.921,
+      "row_weighted": 0.914,
+      "acc_on_merchants_not_in_list": null,
+      "escalated_to_slm": 0.139
+    }
+  ],
+  "moneydata/hold": [
+    {
+      "threshold": "slm_only",
+      "merchant_acc": 0.804,
+      "row_weighted": 0.815,
+      "acc_on_merchants_not_in_list": 0.653,
+      "escalated_to_slm": 1.0
+    },
+    {
+      "threshold": 0.0,
+      "merchant_acc": 0.85,
+      "row_weighted": 0.859,
+      "acc_on_merchants_not_in_list": 0.619,
+      "escalated_to_slm": 0.364
+    },
+    {
+      "threshold": 0.5,
+      "merchant_acc": 0.846,
+      "row_weighted": 0.857,
+      "acc_on_merchants_not_in_list": 0.619,
+      "escalated_to_slm": 0.367
+    },
+    {
+      "threshold": 0.6,
+      "merchant_acc": 0.846,
+      "row_weighted": 0.857,
+      "acc_on_merchants_not_in_list": 0.624,
+      "escalated_to_slm": 0.371
+    },
+    {
+      "threshold": 0.7,
+      "merchant_acc": 0.846,
+      "row_weighted": 0.857,
+      "acc_on_merchants_not_in_list": 0.629,
+      "escalated_to_slm": 0.378
+    },
+    {
+      "threshold": 0.8,
+      "merchant_acc": 0.837,
+      "row_weighted": 0.84,
+      "acc_on_merchants_not_in_list": 0.629,
+      "escalated_to_slm": 0.388
+    },
+    {
+      "threshold": 0.85,
+      "merchant_acc": 0.837,
+      "row_weighted": 0.84,
+      "acc_on_merchants_not_in_list": 0.629,
+      "escalated_to_slm": 0.389
+    },
+    {
+      "threshold": 0.9,
+      "merchant_acc": 0.835,
+      "row_weighted": 0.837,
+      "acc_on_merchants_not_in_list": 0.629,
+      "escalated_to_slm": 0.393
+    },
+    {
+      "threshold": 0.95,
+      "merchant_acc": 0.834,
+      "row_weighted": 0.837,
+      "acc_on_merchants_not_in_list": 0.629,
+      "escalated_to_slm": 0.404
+    }
+  ]
+}

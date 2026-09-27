@@ -1,20 +1,20 @@
 {
   "embedding": {
-    "acc": 0.906,
-    "ci95": 0.018,
-    "macro_f1": 0.908,
-    "invalid": 0
-  },
-  "jev": {
-    "acc": 0.807,
-    "ci95": 0.024,
-    "macro_f1": 0.811,
+    "acc": 0.901,
+    "ci95": 0.019,
+    "macro_f1": 0.909,
     "invalid": 0
   },
   "slm": {
     "acc": 0.622,
     "ci95": 0.03,
-    "macro_f1": 0.391,
-    "invalid": 36
+    "macro_f1": 0.343,
+    "invalid": 31
+  },
+  "jev": {
+    "acc": 0.803,
+    "ci95": 0.025,
+    "macro_f1": 0.804,
+    "invalid": 0
   }
 }

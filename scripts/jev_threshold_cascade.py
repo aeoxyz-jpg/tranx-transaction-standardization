@@ -54,7 +54,7 @@ def synthetic_slm() -> pl.DataFrame:
 
 def sweep(d: pl.DataFrame, is_ok) -> list[dict]:
     choice, conf, slm, gold = (d[c].to_list() for c in ("choice", "confidence", "slm", "gold"))
-    n = d["n"].to_numpy() if "n" in d.columns else np.ones(len(d))
+    n = d["n"].fill_null(1).to_numpy() if "n" in d.columns else np.ones(len(d))
     unseen = ~d["gold_in_list"].to_numpy()
     rows = []
     for t in [None] + THRESHOLDS:
