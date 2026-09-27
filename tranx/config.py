@@ -85,6 +85,30 @@ TRANSACTION_TYPE_LABELS = {
     # Government fees
     "Tax", "Permit", "License", "Registration", "Visa", "Passport",
 }
+# Source labels that name what was bought (a procedure, service product, activity or
+# fee item) rather than who was paid. Also merchant-less (user ruling 2026-09-27).
+# Unnamed providers and venues stay merchants: Hospital, Lab, Urgent Care,
+# Cardiologist, Pharmacy, Cable Company, Gym, Cinema, Zoo, Bank, Church.
+PURCHASE_ITEM_LABELS = {
+    # medical procedures and care types
+    "Blood Test", "MRI", "X-Ray", "Surgery", "Dental", "Eye Care", "Physical Therapy",
+    "Occupational Therapy", "Speech Therapy", "Primary Care",
+    # transport services and fees
+    "Toll", "Parking", "Bus", "Train", "Taxi",
+    # events and activities
+    "Concert", "Festival", "Fair", "Carnival", "Go-Kart", "Laser Tag", "Paintball",
+    "Mini Golf", "Rock Climbing", "Pilates", "Fitness",
+    # connectivity products
+    "Broadband", "DSL", "Fiber", "WiFi", "Mobile", "Cable Internet", "Satellite Internet",
+    "Mobile Hotspot", "Public WiFi", "Business WiFi", "WiFi Hotspot",
+    # financial and professional services
+    "Insurance", "Banking", "Accounting", "Bookkeeping", "Tax Preparation",
+    "Wealth Management", "Retirement Planning",
+    # generic services
+    "Legal", "Service",
+}
+# Every label with no merchant; the gold keeps it in the txn_type column.
+NON_MERCHANT_LABELS = TRANSACTION_TYPE_LABELS | PURCHASE_ITEM_LABELS
 # Hard-mode descriptor synthesis: mimic the dirt real card-network descriptors
 # carry (aggregator prefixes, embedded geo/store ids, truncation, uppercasing).
 HARD_PREFIXES = [

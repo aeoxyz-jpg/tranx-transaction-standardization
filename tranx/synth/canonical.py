@@ -49,13 +49,13 @@ def derive_canonical(description: str) -> str:
 
 
 def gold_merchant(canonical: str, category: str) -> tuple[str | None, str | None]:
-    """Gold (merchant, transaction_type) for a derived canonical name.
+    """Gold (merchant, non-merchant label) for a derived canonical name.
 
-    Transaction types (salary, transfer, ...) have no merchant: returns
-    (None, type_label). Otherwise applies label merges and category-based splits
-    and returns (merchant, None).
+    Transaction types (salary, transfer, ...) and purchased items (MRI, Toll,
+    Broadband, ...) have no merchant: returns (None, label). Otherwise applies label
+    merges and category-based splits and returns (merchant, None).
     """
-    if canonical in config.TRANSACTION_TYPE_LABELS:
+    if canonical in config.NON_MERCHANT_LABELS:
         return None, canonical
     split = config.CATEGORY_SPLIT_LABELS.get(canonical)
     if split and category in split:
