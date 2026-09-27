@@ -35,3 +35,13 @@ def test_hard_descriptor_keeps_some_merchant_signal():
     n = 100
     hits = sum(1 for s in range(n) if "MCDONALD" in _gen(s).upper() or "McDonald" in _gen(s))
     assert hits > 0.5 * n
+
+
+def test_truncation_never_removes_the_merchant():
+    import random, re
+    from tranx.synth.hard import hard_descriptor
+    rng = random.Random(0)
+    for _ in range(2000):
+        d = hard_descriptor("Kentucky Fried Chicken", "Food & Dining", "USA", rng)
+        letters = re.sub(r"[^a-z]", "", d.lower())
+        assert "kentuck" in letters, d

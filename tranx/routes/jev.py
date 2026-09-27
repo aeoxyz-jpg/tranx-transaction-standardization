@@ -21,13 +21,10 @@ def build_request(txn: Txn, categories: list[str], model: str,
     """Choice question over the category list; optionally a second Choice over
     fuzzy-retrieved known merchants (Jev cannot emit free text, so unseen
     merchants can only resolve to NONE_OPTION). State is the structured txn."""
-    state = {
-        "description": strip_processor_prefix(txn.description),
-        "transaction_type_code": txn.transaction_type_code,
-        "mcc": txn.mcc,
-        "amount": txn.amount,
-        "payment_method": txn.payment_method,
-    }
+    # Description only, the same input the SLM and embedding routes get. The
+    # synthetic type code / amount / payment method are category-conditioned by
+    # construction and would hand Jev (only) a partial label oracle.
+    state = {"description": strip_processor_prefix(txn.description)}
     questions = {
         "category": {
             "type": "choice",
@@ -86,6 +83,7 @@ class JevRoute(Route):
         elif merchant_choice:
             self.name = "jev_merchant"
         self.escalated = 0
+        self.escalated_ids: set[str] = set()
         self._rules = RulesRoute()
         self._categories = config.CATEGORIES
         self._default_category = "Shopping & Retail"
@@ -123,6 +121,7 @@ class JevRoute(Route):
                 merchant = pick
             elif self._fallback is not None:
                 self.escalated += 1
+                self.escalated_ids.add(txn.txn_id)
                 merchant = self._fallback.standardize(txn).canonical_merchant
             else:
                 merchant = derive_canonical(stripped)

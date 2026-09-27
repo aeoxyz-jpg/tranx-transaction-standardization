@@ -27,7 +27,10 @@ OUT = config.REPORTS_DIR / "real"
 
 
 def load(n: int, train_cap: int):
-    d = pl.read_csv(SRC).with_row_index("rid")
+    # 68k rows but ~46k distinct descriptions: dedupe first, otherwise ~37% of test
+    # descriptions also sit verbatim in train and the supervised LR memorizes them.
+    d = pl.read_csv(SRC).unique(subset="description", keep="first", maintain_order=True)
+    d = d.with_row_index("rid")
     test = d.sample(n=n, seed=config.SEED)
     train = d.filter(~pl.col("rid").is_in(test["rid"]))
     if len(train) > train_cap:

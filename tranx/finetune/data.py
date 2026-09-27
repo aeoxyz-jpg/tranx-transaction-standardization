@@ -30,8 +30,11 @@ def to_example(descriptor: str, canonical: str, category: str,
 
 def build_examples(feed: pl.DataFrame, gold: pl.DataFrame,
                    categories: list[str]) -> list[dict]:
-    j = feed.select(["txn_id", "description"]).join(
-        gold.select(["txn_id", "canonical_merchant", "category"]), on="txn_id")
+    j = feed.select(["txn_id", "description"]).join(gold, on="txn_id")
+    if "txn_type" in j.columns:
+        # Transaction-type rows have no merchant; train on the type label instead of
+        # null so the model does not learn to emit null (merchant metrics skip them).
+        j = j.with_columns(pl.coalesce("canonical_merchant", "txn_type").alias("canonical_merchant"))
     return [to_example(r["description"], r["canonical_merchant"], r["category"], categories)
             for r in j.iter_rows(named=True)]
 

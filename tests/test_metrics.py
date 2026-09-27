@@ -95,3 +95,25 @@ def test_merchant_spend_kpi_penalizes_misassignment():
     res = metrics.merchant_spend_kpi(feed, pred, gold, tolerance=0.01)
     assert res["mae"] > 0.0
     assert res["within_tolerance"] < 1.0
+
+
+def test_null_gold_merchant_rows_are_not_scored():
+    import polars as pl
+    from tranx.eval import metrics
+    gold = pl.DataFrame({"txn_id": ["a", "b"], "canonical_merchant": ["Starbucks", None],
+                         "category": ["Food & Dining", "Income"]},
+                        schema_overrides={"canonical_merchant": pl.Utf8})
+    pred = pl.DataFrame({"txn_id": ["a", "b"], "canonical_merchant": ["STARBUCKS", "Salary"],
+                         "category": ["Food & Dining", "Income"]})
+    assert metrics.merchant_exact_match(pred, gold) == 0.0
+    assert metrics.merchant_normalized_match(pred, gold) == 1.0
+    assert metrics.category_accuracy(pred, gold) == 1.0
+
+
+def test_spend_kpi_uses_normalized_names():
+    import polars as pl
+    from tranx.eval import metrics
+    feed = pl.DataFrame({"txn_id": ["a", "b"], "customer_id": ["C1", "C1"], "amount": [-5.0, -7.0]})
+    gold = pl.DataFrame({"txn_id": ["a", "b"], "canonical_merchant": ["Starbucks", "Starbucks"]})
+    pred = pl.DataFrame({"txn_id": ["a", "b"], "canonical_merchant": ["STARBUCKS", "Starbucks"]})
+    assert metrics.merchant_spend_kpi(feed, pred, gold)["within_tolerance"] == 1.0

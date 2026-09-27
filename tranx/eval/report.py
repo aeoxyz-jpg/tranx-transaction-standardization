@@ -5,10 +5,13 @@ _COLUMNS = [
     ("route", "route"),
     ("split", "split"),
     ("category_acc", "Category Acc"),
+    ("category_ci", "Cat ±95%"),
     ("macro_f1", "Macro F1"),
     ("merchant_acc", "Merchant Acc"),
     ("merchant_norm", "Merchant Norm"),
+    ("merchant_norm_ci", "Merch ±95%"),
     ("dedup_ratio", "Dedup Ratio"),
+    ("gold_dedup_ratio", "Gold Dedup"),
     ("kpi_within_tol", "Spend KPI"),
     ("avg_ms", "ms/txn"),
 ]
@@ -46,6 +49,8 @@ def plot_customer_spend(feed: pl.DataFrame, pred: pl.DataFrame, gold: pl.DataFra
     from tranx.pipeline.aggregate import rollup_by_merchant
 
     base = feed.select(["txn_id", "customer_id", "amount"])
+    gold = gold.filter(pl.col("canonical_merchant").is_not_null())
+    pred = pred.filter(pl.col("txn_id").is_in(gold["txn_id"]))
     g = rollup_by_merchant(base.join(gold.select(["txn_id", "canonical_merchant"]),
                                      on="txn_id")).filter(pl.col("customer_id") == customer_id)
     p = rollup_by_merchant(base.join(pred.select(["txn_id", "canonical_merchant"]),

@@ -32,7 +32,7 @@ class EmbeddingRoute(Route):
 
     def fit(self, train_feed: pl.DataFrame, train_gold: pl.DataFrame) -> None:
         joined = train_feed.join(train_gold, on="txn_id")
-        self._canon_names = sorted(set(joined["canonical_merchant"].to_list()))
+        self._canon_names = sorted(set(joined["canonical_merchant"].drop_nulls().to_list()))
         self._canon_vecs = self._encoder(self._canon_names)
 
         desc_vecs = self._encoder(joined["description"].to_list())

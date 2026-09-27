@@ -73,3 +73,32 @@ def test_split_unseen_has_disjoint_merchants():
     assert len(eval_merchants) >= 1
     # feed/gold stay aligned by txn_id
     assert set(ef["txn_id"]) == set(eg["txn_id"])
+
+
+def test_brand_families_group_sibling_labels():
+    from tranx.cli import brand_families
+    f = brand_families(["Walmart", "Walmart Pharmacy", "Bank", "Community Bank",
+                        "Saks Fifth Avenue", "Saks Off 5th", "Starbucks"])
+    assert f["Walmart"] == f["Walmart Pharmacy"]
+    assert f["Bank"] == f["Community Bank"]
+    assert f["Saks Fifth Avenue"] == f["Saks Off 5th"]
+    assert f["Starbucks"] not in {f["Walmart"], f["Bank"]}
+
+
+def test_unseen_assignment_is_stable_under_label_changes():
+    from tranx.cli import _in_eval
+    keys = [f"Merchant {i}" for i in range(500)]
+    before = {k for k in keys if _in_eval(k, 0.2)}
+    after = {k for k in keys[:300] if _in_eval(k, 0.2)}  # other labels removed
+    assert after == {k for k in before if k in keys[:300]}
+    assert 60 <= len(before) <= 140
+
+
+
+def test_generic_hub_label_does_not_chain_brands():
+    from tranx.cli import brand_families
+    f = brand_families(["Pharmacy", "Kroger Pharmacy", "Safeway Pharmacy", "Walmart Pharmacy",
+                        "Walmart", "Local Church", "Local Food Bank"])
+    assert f["Walmart"] == f["Walmart Pharmacy"]          # real sibling
+    assert f["Kroger Pharmacy"] != f["Walmart Pharmacy"]  # not chained through "Pharmacy"
+    assert f["Local Church"] != f["Local Food Bank"]      # a shared generic first word is not a brand

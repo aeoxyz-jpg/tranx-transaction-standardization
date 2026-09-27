@@ -68,17 +68,74 @@ def _split_random(feed: pl.DataFrame, gold: pl.DataFrame, seed: int):
     return _ids_split(feed, gold, eval_ids)
 
 
+_STOP = {"the", "of", "and", "s", "for"}
+
+
+def _tokens(name: str) -> frozenset:
+    import re
+    return frozenset(t for t in re.findall(r"[a-z0-9]+", name.lower()) if t not in _STOP)
+
+
+# Sibling banners whose names share no token subset.
+_FAMILY_LINKS = [("Saks Fifth Avenue", "Saks Off 5th")]
+
+
+def brand_families(merchants: list[str]) -> dict[str, str]:
+    """Group merchant labels that name the same brand family: one label's tokens are
+    a subset of the other's ("Walmart" / "Walmart Pharmacy", "Nordstrom" /
+    "Nordstrom Rack"), plus explicit _FAMILY_LINKS. A one-word generic label that
+    occurs inside >= 3 other labels ("Pharmacy", "Fitness", "Bank") is a hub, not a
+    brand: it does not link, otherwise it would chain Kroger, Safeway and Walmart
+    into one family. Returns merchant -> family key (smallest name in the group)."""
+    parent = {m: m for m in merchants}
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    toks = {m: _tokens(m) for m in merchants}
+    hubs = {m for m in merchants if len(toks[m]) == 1
+            and sum(toks[m] <= toks[o] for o in merchants if o != m) >= 3}
+    for i, a in enumerate(merchants):
+        for b in merchants[i + 1:]:
+            ta, tb = toks[a], toks[b]
+            if a in hubs or b in hubs or not ta or not tb:
+                continue
+            if ta <= tb or tb <= ta:
+                parent[find(a)] = find(b)
+    for a, b in _FAMILY_LINKS:
+        if a in parent and b in parent:
+            parent[find(a)] = find(b)
+    groups: dict[str, list[str]] = {}
+    for m in merchants:
+        groups.setdefault(find(m), []).append(m)
+    return {m: min(g) for g in groups.values() for m in g}
+
+
+def _in_eval(key: str, frac: float) -> bool:
+    """Stable hash assignment: a key's side of the split never depends on which other
+    keys exist, so label edits elsewhere do not reshuffle the held-out set."""
+    import hashlib
+    return int(hashlib.sha1(key.encode()).hexdigest(), 16) % 1000 < frac * 1000
+
+
 def _split_unseen(feed: pl.DataFrame, gold: pl.DataFrame, seed: int, frac: float = 0.2):
     """Merchant-disjoint split: ~frac of distinct merchants are held out, so the
     eval set contains only merchants the training set never saw. This is the
     robustness test — learned-canonical routes cannot memorize their way through."""
-    merchants = sorted(gold["canonical_merchant"].unique().to_list())
-    rng = random.Random(seed)
-    rng.shuffle(merchants)
-    n_eval = max(1, int(frac * len(merchants)))
-    eval_merchants = set(merchants[:n_eval])
+    merchants = sorted(gold["canonical_merchant"].drop_nulls().unique().to_list())
+    family = brand_families(merchants)
+    # Whole brand families are held out together, so no eval brand has a sibling
+    # label ("Walmart" for "Walmart Pharmacy") in the training list.
+    eval_merchants = {m for m in merchants if _in_eval(family[m], frac)}
     eval_ids = set(
         gold.filter(pl.col("canonical_merchant").is_in(eval_merchants))["txn_id"].to_list())
+    # Transaction-type rows have no merchant; send the same fraction to eval so the
+    # category mix of the unseen split stays comparable.
+    no_merchant = gold.filter(pl.col("canonical_merchant").is_null())["txn_id"].to_list()
+    eval_ids |= {t for t in no_merchant if _in_eval(t, frac)}
     return _ids_split(feed, gold, eval_ids)
 
 
@@ -123,18 +180,33 @@ def _make_route(name: str, slm_model: str | None = None,
 def _evaluate(route, train_feed, train_gold, eval_feed, eval_gold):
     route.fit(train_feed, train_gold)
     preds, timing = run_route(route, eval_feed)
-    raw_distinct = eval_feed["description"].n_unique()
-    kpi = metrics.merchant_spend_kpi(eval_feed, preds, eval_gold)
+    # Merchant metrics are scored only where the gold has a merchant; transaction-type
+    # rows (salary, transfer, ...) count for category only.
+    m_ids = eval_gold.filter(pl.col("canonical_merchant").is_not_null())["txn_id"]
+    m_feed = eval_feed.filter(pl.col("txn_id").is_in(m_ids))
+    m_preds = preds.filter(pl.col("txn_id").is_in(m_ids))
+    m_gold = eval_gold.filter(pl.col("txn_id").is_in(m_ids))
+    kpi = metrics.merchant_spend_kpi(m_feed, m_preds, m_gold)
+    ci = metrics.cluster_bootstrap_ci(preds, eval_gold, seed=config.SEED)
+    extra = {}
+    if getattr(route, "_fallback", None) is not None:
+        esc = getattr(route, "escalated_ids", set())
+        extra["escalated"] = round(sum(t in esc for t in m_ids) / max(1, len(m_ids)), 3)
     return {
         "route": route.name,
         "category_acc": metrics.category_accuracy(preds, eval_gold),
         "macro_f1": metrics.category_macro_f1(preds, eval_gold),
-        "merchant_acc": metrics.merchant_exact_match(preds, eval_gold),
-        "merchant_norm": metrics.merchant_normalized_match(preds, eval_gold),
-        "dedup_ratio": metrics.dedup_ratio(preds, raw_distinct),
+        "merchant_acc": metrics.merchant_exact_match(m_preds, m_gold),
+        "merchant_norm": metrics.merchant_normalized_match(m_preds, m_gold),
+        "dedup_ratio": metrics.dedup_ratio(m_preds, m_feed["description"].n_unique()),
         "kpi_within_tol": kpi["within_tolerance"],
         "kpi_mae": kpi["mae"],
         "avg_ms": timing["avg_ms"],
+        "merchant_rows": len(m_ids),
+        "category_ci": ci["category"],
+        "merchant_norm_ci": ci["merchant_norm"],
+        "gold_dedup_ratio": metrics.dedup_ratio(m_gold, m_feed["description"].n_unique()),
+        **extra,
     }, preds
 
 
@@ -194,8 +266,6 @@ def main(argv=None) -> None:
                 route = _make_route(name)
                 result, preds = _evaluate(route, tf, tg, ef, eg)
                 result["split"] = split_name
-                if hasattr(route, "escalated") and getattr(route, "_fallback", None) is not None:
-                    result["escalated"] = round(route.escalated / max(1, len(ef)), 3)
                 if getattr(route, "input_tokens", 0):
                     result["input_tokens"] = route.input_tokens
                 results.append(result)

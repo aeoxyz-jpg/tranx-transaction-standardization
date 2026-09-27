@@ -22,7 +22,8 @@ class RulesRoute(Route):
 
     def __init__(self, score_cutoff: int = 85):
         self.score_cutoff = score_cutoff
-        self._canon_clean_to_name: dict[str, str] = {}
+        self._canon_clean_to_name: dict[str, str] = {}  # merchants only (also Jev's candidates)
+        self._type_clean_to_name: dict[str, str] = {}   # transaction types (category prior only)
         self._merchant_to_category: dict[str, str] = {}
         self._mcc_to_category: dict[int, str] = {}
         self._default_category = "Shopping & Retail"
@@ -34,9 +35,16 @@ class RulesRoute(Route):
         for row in joined.iter_rows(named=True):
             canon = row["canonical_merchant"]
             category = row["category"]
-            self._canon_clean_to_name[clean_description(canon)] = canon
-            merchant_counts.setdefault(canon, {})
-            merchant_counts[canon][category] = merchant_counts[canon].get(category, 0) + 1
+            # Transaction-type rows (salary, transfer, ...) have no merchant, but their
+            # type label is still a strong category prior.
+            label = canon if canon is not None else row.get("txn_type")
+            if label is not None:
+                if canon is not None:
+                    self._canon_clean_to_name[clean_description(canon)] = canon
+                else:
+                    self._type_clean_to_name[clean_description(label)] = label
+                merchant_counts.setdefault(label, {})
+                merchant_counts[label][category] = merchant_counts[label].get(category, 0) + 1
             mcc = row["mcc"]
             if mcc is not None:
                 mcc_counts.setdefault(mcc, {})
@@ -50,7 +58,8 @@ class RulesRoute(Route):
     def _match_merchant(self, description: str) -> str:
         stripped = strip_processor_prefix(description)
         query = clean_description(derive_canonical(stripped))
-        keys = list(self._canon_clean_to_name.keys())
+        names = {**self._type_clean_to_name, **self._canon_clean_to_name}
+        keys = list(names.keys())
         if not keys:
             return derive_canonical(stripped)
         # token_set_ratio tolerates embedded city/state/store-id tokens that hard
@@ -59,7 +68,7 @@ class RulesRoute(Route):
         match = process.extractOne(query, keys, scorer=fuzz.token_set_ratio,
                                    score_cutoff=self.score_cutoff)
         if match:
-            return self._canon_clean_to_name[match[0]]
+            return names[match[0]]
         return derive_canonical(stripped)
 
     def standardize(self, txn: Txn) -> Standardized:

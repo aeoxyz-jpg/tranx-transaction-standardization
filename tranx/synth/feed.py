@@ -2,7 +2,7 @@ import math
 import random
 import polars as pl
 from tranx import config
-from tranx.synth.canonical import derive_canonical
+from tranx.synth.canonical import derive_canonical, gold_merchant
 from tranx.synth.mcc import mcc_for
 from tranx.synth.hard import hard_descriptor
 
@@ -37,15 +37,19 @@ def _pick_method(category: str, rng: random.Random) -> str:
     return rng.choices(methods, weights=weights, k=1)[0]
 
 
-def _type_code(method: str, direction: str, is_merchant: bool) -> str:
-    """Synthetic bank type code: <DIR><METHOD><FLAG>, e.g. 'O-CC-M'."""
+def _type_code(method: str, direction: str) -> str:
+    """Synthetic bank type code: <DIR>-<METHOD>, e.g. 'O-CC'.
+
+    There is deliberately no merchant/non-merchant flag: it was a pure function of
+    the category (Income / Financial Services) and handed any route that read it
+    the label for those two classes.
+    """
     d = "I" if direction == "incoming" else "O"
     m = {
         "credit_card": "CC", "debit_card": "DC", "ach": "ACH", "wire": "WIR",
         "check": "CHK", "cash_app": "CSH", "transfer": "TRF",
     }[method]
-    flag = "M" if is_merchant else "N"
-    return f"{d}-{m}-{flag}"
+    return f"{d}-{m}"
 
 
 def _amount(category: str, rng: random.Random) -> float:
@@ -102,7 +106,7 @@ def build_feed(df: pl.DataFrame, seed: int = config.SEED,
             "txn_id": txn_id,
             "customer_id": customer_id,
             "description": feed_desc,
-            "transaction_type_code": _type_code(method, direction, is_merchant),
+            "transaction_type_code": _type_code(method, direction),
             "mcc": mcc,
             "amount": signed,
             "payment_method": method,
@@ -110,13 +114,16 @@ def build_feed(df: pl.DataFrame, seed: int = config.SEED,
             "country": row["country"],
             "currency": row["currency"],
         })
+        merchant, txn_type = gold_merchant(canonical, category)
         gold_rows.append({
             "txn_id": txn_id,
             "category": category,
-            "canonical_merchant": canonical,
+            "canonical_merchant": merchant,
+            "txn_type": txn_type,
             "direction": direction,
         })
 
     feed = pl.DataFrame(feed_rows, schema_overrides={"mcc": pl.Int64})
-    gold = pl.DataFrame(gold_rows)
+    gold = pl.DataFrame(gold_rows, schema_overrides={"canonical_merchant": pl.Utf8,
+                                                     "txn_type": pl.Utf8})
     return feed, gold

@@ -23,7 +23,11 @@ def test_build_feed_splits_and_columns(fixture_df):
     assert "canonical_merchant" not in feed_cols
     assert {"txn_id", "customer_id", "amount", "payment_method",
             "transaction_type_code", "mcc", "posted_date"} <= feed_cols
-    assert {"txn_id", "category", "canonical_merchant", "direction"} == set(gold.columns)
+    assert {"txn_id", "category", "canonical_merchant", "txn_type", "direction"} == set(gold.columns)
+    # merchant and transaction type are mutually exclusive, exactly one is set
+    assert (gold["canonical_merchant"].is_null() != gold["txn_type"].is_null()).all()
+    # the type code carries direction and method only (no category-determined flag)
+    assert feed["transaction_type_code"].str.contains(r"^[IO]-[A-Z]+$").all()
 
 
 def test_feed_is_deterministic(fixture_df):

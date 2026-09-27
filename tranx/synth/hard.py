@@ -32,10 +32,13 @@ def hard_descriptor(canonical: str, category: str, country: str,
         parts.append(f"{rng.randint(200, 999)}{rng.randint(1000000, 9999999)}")
 
     desc = " ".join(parts)
-    if rng.random() < 0.45:
-        desc = rng.choice(config.HARD_PREFIXES) + desc
+    # Truncate before the prefix is added, so the merchant always keeps its
+    # leading characters (truncating after left some rows as a bare
+    # "DEBIT CARD PURCHASE" with no merchant text at all).
     if rng.random() < 0.5:
         desc = desc[: rng.randint(20, 25)]
+    if rng.random() < 0.45:
+        desc = rng.choice(config.HARD_PREFIXES) + desc
     if rng.random() < 0.2:
         desc = _WS.sub("", desc)
     return desc.strip()

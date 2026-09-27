@@ -26,9 +26,18 @@ def derive_canonical(description: str) -> str:
     s = description
     s = _PAREN.sub(" ", s)
     s = _IDS.sub(" ", s)
+    # Protected names contain noise words; park them as placeholders while stripping.
+    parked = {}
+    for i, name in enumerate(config.PROTECTED_NAMES):
+        token = f"\x00{i}\x00"
+        s, n = re.subn(re.escape(name), token, s, flags=re.IGNORECASE)
+        if n:
+            parked[token] = name
     s = _TIME.sub(" ", s)
     s = _FORMAT.sub(" ", s)
     s = _COUNTRY.sub(" ", s)
+    for token, name in parked.items():
+        s = s.replace(token, name)
     # Drop leftover lone dashes used as separators
     s = s.replace(" - ", " ")
     s = _WS.sub(" ", s)
@@ -37,6 +46,21 @@ def derive_canonical(description: str) -> str:
     if s not in config.HOSPITAL_MERCHANTS:
         s = _TRAILING_HOSPITAL.sub("", s)
     return s
+
+
+def gold_merchant(canonical: str, category: str) -> tuple[str | None, str | None]:
+    """Gold (merchant, transaction_type) for a derived canonical name.
+
+    Transaction types (salary, transfer, ...) have no merchant: returns
+    (None, type_label). Otherwise applies label merges and category-based splits
+    and returns (merchant, None).
+    """
+    if canonical in config.TRANSACTION_TYPE_LABELS:
+        return None, canonical
+    split = config.CATEGORY_SPLIT_LABELS.get(canonical)
+    if split and category in split:
+        return split[category], None
+    return config.LABEL_MERGES.get(canonical, canonical), None
 
 
 def strip_coverage(descriptions: list[str]) -> float:

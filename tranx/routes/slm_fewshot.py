@@ -13,7 +13,7 @@ _FEWSHOT = (
     'Description: "BP on Buford Hwy" -> {"canonical_merchant": "BP", "category": "Transportation"}\n'
     'Description: "Salary - Rush Hour" -> {"canonical_merchant": "Salary", "category": "Income"}\n'
     'Description: "HOME DEPOT #4521 ATLANTA GA" -> {"canonical_merchant": "Home Depot", "category": "Shopping & Retail"}\n'
-    'Description: "SQ *CANES 47486" -> {"canonical_merchant": "Cane\'s", "category": "Food & Dining"}\n'
+    'Description: "SQ *CANES 47486" -> {"canonical_merchant": "Raising Cane\'s", "category": "Food & Dining"}\n'
 )
 
 
@@ -74,7 +74,7 @@ class SlmFewshotRoute(Route):
         self._default_category = "Shopping & Retail"
 
     def fit(self, train_feed: pl.DataFrame, train_gold: pl.DataFrame) -> None:
-        cats = train_gold["category"].unique().to_list()
+        cats = sorted(train_gold["category"].unique().to_list())
         if cats:
             self._categories = cats
             self._default_category = train_gold["category"].mode().to_list()[0]

@@ -70,3 +70,19 @@ def test_unknown_mcc_falls_back_to_merchant_then_default():
     # "BP #5" strips to "BP", which matches the learned canonical "BP".
     out = r.standardize(_txn("BP #5", amount=-30.0, mcc=9999))
     assert out.category == "Transportation"
+
+
+def test_transaction_type_rows_still_teach_category():
+    import polars as pl
+    from tranx.routes.rules import RulesRoute
+    feed = pl.DataFrame({"txn_id": ["a", "b"], "description": ["SALARY #1", "Starbucks #2"],
+                         "mcc": [None, 5814]}, schema_overrides={"mcc": pl.Int64})
+    gold = pl.DataFrame({"txn_id": ["a", "b"], "canonical_merchant": [None, "Starbucks"],
+                         "txn_type": ["Salary", None], "category": ["Income", "Food & Dining"],
+                         "direction": ["incoming", "outgoing"]},
+                        schema_overrides={"canonical_merchant": pl.Utf8, "txn_type": pl.Utf8})
+    r = RulesRoute()
+    r.fit(feed, gold)
+    assert r.standardize(_txn("SALARY #99", mcc=None, amount=2500.0)).category == "Income"
+    # type labels are not offered as merchants (e.g. as Jev candidates)
+    assert "Salary" not in r._canon_clean_to_name.values()

@@ -13,8 +13,8 @@ def _txn(desc="SQ *CANES 47486", amount=-12.5, mcc=5814):
 def test_build_request_shape():
     req = build_request(_txn(), ["Income", "Food & Dining"], "jev-latest")
     assert req["model"] == "jev-latest"
-    assert req["state"]["description"] == "CANES 47486"
-    assert req["state"]["mcc"] == 5814
+    # description only: the same input the SLM gets
+    assert req["state"] == {"description": "CANES 47486"}
     q = req["questions"]["category"]
     assert q["type"] == "choice"
     assert set(q["criteria"]) == {"Income", "Food & Dining"}
