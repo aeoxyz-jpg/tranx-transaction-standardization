@@ -1,102 +1,121 @@
 {
+  "spend_join_coverage": 1.0,
   "derive": {
     "distinct": 0.177,
     "row_weighted": 0.155,
-    "macro_by_merchant": 0.317
+    "macro_by_merchant": 0.317,
+    "spend_weighted": 0.134
   },
   "fuzzy_known": {
     "distinct": 0.868,
     "row_weighted": 0.824,
-    "macro_by_merchant": 0.892
+    "macro_by_merchant": 0.892,
+    "spend_weighted": 0.723
   },
   "fuzzy_hold": {
     "distinct": 0.596,
     "row_weighted": 0.65,
-    "macro_by_merchant": 0.206
+    "macro_by_merchant": 0.206,
+    "spend_weighted": 0.275
   },
   "embed_known": {
     "distinct": 0.878,
     "row_weighted": 0.822,
-    "macro_by_merchant": 0.904
+    "macro_by_merchant": 0.904,
+    "spend_weighted": 0.719
   },
   "embed_hold": {
     "distinct": 0.554,
     "row_weighted": 0.574,
-    "macro_by_merchant": 0.212
+    "macro_by_merchant": 0.212,
+    "spend_weighted": 0.265
   },
   "slm": {
     "distinct": 0.804,
     "row_weighted": 0.815,
-    "macro_by_merchant": 0.677
+    "macro_by_merchant": 0.677,
+    "spend_weighted": 0.568
   },
   "jev_known": {
     "distinct": 0.958,
     "row_weighted": 0.944,
-    "macro_by_merchant": 0.939
+    "macro_by_merchant": 0.939,
+    "spend_weighted": 0.772
   },
   "jev_hold": {
     "distinct": 0.618,
     "row_weighted": 0.677,
-    "macro_by_merchant": 0.215
+    "macro_by_merchant": 0.215,
+    "spend_weighted": 0.285
   },
   "cascade_embed0.6_to_slm": {
     "distinct": 0.821,
     "row_weighted": 0.847,
     "macro_by_merchant": 0.67,
+    "spend_weighted": 0.575,
     "held_subset": {
       "distinct": 0.609,
       "row_weighted": 0.565,
-      "macro_by_merchant": 0.609
+      "macro_by_merchant": 0.609,
+      "spend_weighted": 0.429
     },
-    "escalated": 0.481,
+    "escalated_descriptor_share": 0.481,
     "held_wrongly_accepted": 0.059
   },
   "cascade_embed0.7_to_slm": {
     "distinct": 0.823,
     "row_weighted": 0.843,
     "macro_by_merchant": 0.686,
+    "spend_weighted": 0.576,
     "held_subset": {
       "distinct": 0.639,
       "row_weighted": 0.571,
-      "macro_by_merchant": 0.639
+      "macro_by_merchant": 0.639,
+      "spend_weighted": 0.432
     },
-    "escalated": 0.673,
+    "escalated_descriptor_share": 0.673,
     "held_wrongly_accepted": 0.015
   },
   "cascade_embed0.8_to_slm": {
     "distinct": 0.815,
     "row_weighted": 0.83,
     "macro_by_merchant": 0.686,
+    "spend_weighted": 0.571,
     "held_subset": {
       "distinct": 0.653,
       "row_weighted": 0.581,
-      "macro_by_merchant": 0.653
+      "macro_by_merchant": 0.653,
+      "spend_weighted": 0.435
     },
-    "escalated": 0.89,
+    "escalated_descriptor_share": 0.89,
     "held_wrongly_accepted": 0.0
   },
   "cascade_embed0.9_to_slm": {
     "distinct": 0.81,
     "row_weighted": 0.823,
     "macro_by_merchant": 0.681,
+    "spend_weighted": 0.569,
     "held_subset": {
       "distinct": 0.653,
       "row_weighted": 0.581,
-      "macro_by_merchant": 0.653
+      "macro_by_merchant": 0.653,
+      "spend_weighted": 0.435
     },
-    "escalated": 0.96,
+    "escalated_descriptor_share": 0.96,
     "held_wrongly_accepted": 0.0
   },
   "cascade_jevnone_to_slm": {
     "distinct": 0.848,
     "row_weighted": 0.858,
     "macro_by_merchant": 0.696,
+    "spend_weighted": 0.586,
     "held_subset": {
       "distinct": 0.619,
       "row_weighted": 0.574,
-      "macro_by_merchant": 0.619
+      "macro_by_merchant": 0.619,
+      "spend_weighted": 0.432
     },
-    "escalated": 0.364
+    "escalated_descriptor_share": 0.364
   },
   "jev_hold_none_rate": {
     "on_held_merchants": 0.955,
@@ -106,22 +125,26 @@
     "derive": {
       "distinct": 0.361,
       "row_weighted": 0.322,
-      "macro_by_merchant": 0.361
+      "macro_by_merchant": 0.361,
+      "spend_weighted": 0.059
     },
     "slm": {
       "distinct": 0.653,
       "row_weighted": 0.581,
-      "macro_by_merchant": 0.653
+      "macro_by_merchant": 0.653,
+      "spend_weighted": 0.435
     },
     "embed_hold": {
       "distinct": 0.0,
       "row_weighted": 0.0,
-      "macro_by_merchant": 0.0
+      "macro_by_merchant": 0.0,
+      "spend_weighted": 0.0
     },
     "fuzzy_hold": {
       "distinct": 0.0,
       "row_weighted": 0.0,
-      "macro_by_merchant": 0.0
+      "macro_by_merchant": 0.0,
+      "spend_weighted": 0.0
     }
   },
   "non_literal": {

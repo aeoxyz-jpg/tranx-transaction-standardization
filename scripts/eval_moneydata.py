@@ -83,14 +83,34 @@ def accepted(g: str) -> set[str]:
     return {norm(g)} | ALIASES.get(g, set())
 
 
-def score(pred, gold, n):
+def spend_by_descriptor(raw_csv_path) -> pl.DataFrame:
+    """Aggregate spend per exact descriptor from the raw statement (DEB and DD rows
+    only, absolute Debit Amount; a null Debit Amount counts as 0 but is tallied in
+    null_amounts). Columns: description, spend, n_rows, null_amounts."""
+    df = pl.read_csv(raw_csv_path)
+    sub = df.filter(pl.col("Transaction Type").is_in(["DEB", "DD"]))
+    return (sub
+             .with_columns(pl.col("Debit Amount").is_null().alias("_null"),
+                           pl.col("Debit Amount").fill_null(0.0).abs().alias("_amt"))
+             .group_by(pl.col("Transaction Description").alias("description"))
+             .agg(pl.col("_amt").sum().alias("spend"),
+                  pl.len().alias("n_rows"),
+                  pl.col("_null").sum().alias("null_amounts"))
+             .select("description", "spend", "n_rows", "null_amounts"))
+
+
+def score(pred, gold, n, spend=None):
     ok = np.array([norm(p or "") in accepted(g) for p, g in zip(pred, gold)])
     per_m = {}
     for o, g in zip(ok, gold):
         per_m.setdefault(g, []).append(o)
-    return {"distinct": round(float(ok.mean()), 3),
-            "row_weighted": round(float((ok * n).sum() / n.sum()), 3),
-            "macro_by_merchant": round(float(np.mean([np.mean(v) for v in per_m.values()])), 3)}
+    out = {"distinct": round(float(ok.mean()), 3),
+           "row_weighted": round(float((ok * n).sum() / n.sum()), 3),
+           "macro_by_merchant": round(float(np.mean([np.mean(v) for v in per_m.values()])), 3)}
+    if spend is not None:
+        spend = np.asarray(spend, dtype=float)
+        out["spend_weighted"] = round(float((ok * spend).sum() / spend.sum()), 3) if spend.sum() else None
+    return out
 
 
 def main():
@@ -104,6 +124,8 @@ def main():
     ap.add_argument("--aliases", default="data/real/moneydata_aliases.csv",
                     help="CSV canonical_merchant,aliases (pipe-separated); a prediction matching "
                          "any alias counts as correct")
+    ap.add_argument("--raw", default="data/real/moneydata_raw.csv",
+                    help="raw statement CSV, for the spend-weighted rollup")
     args = ap.parse_args()
     methods = [m for m in args.methods.split(",") if m]  # empty = rescore saved predictions only
     if args.aliases:
@@ -125,8 +147,16 @@ def main():
     held = {m for m in vocab_all if m not in listed}
     vocab_hold = [v for v in vocab_all if v not in held]
     is_held = np.array([g in held for g in gold])
+    # Spend per descriptor, aggregated from the raw statement independently of the
+    # label confidence filter, then joined onto the labelled descriptors by exact text.
+    sdf = spend_by_descriptor(args.raw)
+    spend_map = dict(zip(sdf["description"].to_list(), sdf["spend"].to_list()))
+    has_spend = np.array([d in spend_map for d in descs])
+    spend = np.array([spend_map.get(d, 0.0) for d in descs])
+    join_coverage = round(float(has_spend.mean()), 3)
     print(f"{len(descs)} descriptors, {int(n.sum())} rows, {len(vocab_all)} merchants, "
-          f"{len(held)} new (not on the realistic list), {int(literal.sum())} literal labels")
+          f"{len(held)} new (not on the realistic list), {int(literal.sum())} literal labels, "
+          f"spend join_coverage={join_coverage}")
 
     OUT.mkdir(parents=True, exist_ok=True)
     pred_path = OUT / f"moneydata_preds_{args.confidence.replace(',', '-')}.parquet"
@@ -156,24 +186,26 @@ def main():
         put("jev_hold", [p or "" for p in run_jev(descs, vocab_hold)])
     preds.write_parquet(pred_path)
 
-    res = {}
+    res = {"spend_join_coverage": join_coverage}
     for col in [c for c in preds.columns if c not in ("description", "n", "canonical_merchant") and not c.endswith("_cos")]:
-        res[col] = score(preds[col].to_list(), gold, n)
+        res[col] = score(preds[col].to_list(), gold, n, spend=spend)
     def held_score(pred):
-        return score([x for x, h in zip(pred, is_held) if h], [x for x, h in zip(gold, is_held) if h], n[is_held])
+        return score([x for x, h in zip(pred, is_held) if h], [x for x, h in zip(gold, is_held) if h],
+                     n[is_held], spend=spend[is_held])
 
     if {"embed_hold", "slm"} <= set(preds.columns):
         cos = preds["embed_hold_cos"].to_numpy()
         for gate in (0.6, 0.7, 0.8, 0.9):
             accept = cos >= gate
             casc = [e if a else s for e, s, a in zip(preds["embed_hold"], preds["slm"], accept)]
-            res[f"cascade_embed{gate}_to_slm"] = {**score(casc, gold, n), "held_subset": held_score(casc),
-                                                 "escalated": round(float(1 - accept.mean()), 3),
+            res[f"cascade_embed{gate}_to_slm"] = {**score(casc, gold, n, spend=spend), "held_subset": held_score(casc),
+                                                 "escalated_descriptor_share": round(float(1 - accept.mean()), 3),
                                                  "held_wrongly_accepted": round(float(accept[is_held].mean()), 3)}
     if {"jev_hold", "slm"} <= set(preds.columns):
+        # Resolution 11: MoneyData "jev_slm" = jev_hold, falling back to slm on "".
         jev_casc = [j if j else s for j, s in zip(preds["jev_hold"], preds["slm"])]
-        res["cascade_jevnone_to_slm"] = {**score(jev_casc, gold, n), "held_subset": held_score(jev_casc),
-                                         "escalated": round(float(np.mean([j == "" for j in preds["jev_hold"]])), 3)}
+        res["cascade_jevnone_to_slm"] = {**score(jev_casc, gold, n, spend=spend), "held_subset": held_score(jev_casc),
+                                         "escalated_descriptor_share": round(float(np.mean([j == "" for j in preds["jev_hold"]])), 3)}
     if "jev_hold" in preds.columns:
         said_none = np.array([p == "" for p in preds["jev_hold"]])
         res["jev_hold_none_rate"] = {"on_held_merchants": round(float(said_none[is_held].mean()), 3),
@@ -184,14 +216,14 @@ def main():
         if col in preds.columns:
             p = [x for x, h in zip(preds[col].to_list(), is_held) if h]
             g = [x for x, h in zip(gold, is_held) if h]
-            sub[col] = score(p, g, n[is_held])
+            sub[col] = score(p, g, n[is_held], spend=spend[is_held])
     res["held_subset_only"] = sub
     nl = ~literal
     res["non_literal"] = {c: score([x for x, k in zip(preds[c].to_list(), nl) if k],
-                                   [x for x, k in zip(gold, nl) if k], n[nl])["distinct"]
+                                   [x for x, k in zip(gold, nl) if k], n[nl], spend=spend[nl])["distinct"]
                           for c in res if c in preds.columns}
     res["non_literal"]["cascade_jevnone_to_slm"] = (
-        score([x for x, k in zip(jev_casc, nl) if k], [x for x, k in zip(gold, nl) if k], n[nl])["distinct"]
+        score([x for x, k in zip(jev_casc, nl) if k], [x for x, k in zip(gold, nl) if k], n[nl], spend=spend[nl])["distinct"]
         if {"jev_hold", "slm"} <= set(preds.columns) else None)
     print(json.dumps(res, indent=2))
     tag = args.confidence.replace(",", "-") + ("_aliased" if args.aliases else "_strict")
