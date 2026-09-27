@@ -1,0 +1,105 @@
+{
+  "slm": {
+    "distinct": 0.789,
+    "row_weighted": 0.819
+  },
+  "derive": {
+    "distinct": 0.185,
+    "row_weighted": 0.167
+  },
+  "fuzzy_known": {
+    "distinct": 0.87,
+    "row_weighted": 0.841
+  },
+  "fuzzy_hold": {
+    "distinct": 0.749,
+    "row_weighted": 0.749
+  },
+  "embed_known": {
+    "distinct": 0.883,
+    "row_weighted": 0.834
+  },
+  "embed_hold": {
+    "distinct": 0.753,
+    "row_weighted": 0.757
+  },
+  "jev_known": {
+    "distinct": 0.967,
+    "row_weighted": 0.963
+  },
+  "jev_hold": {
+    "distinct": 0.832,
+    "row_weighted": 0.867
+  },
+  "cascade_embed0.6_to_slm": {
+    "distinct": 0.877,
+    "row_weighted": 0.922,
+    "held_subset": {
+      "distinct": 0.641,
+      "row_weighted": 0.57
+    },
+    "escalated": 0.293,
+    "held_wrongly_accepted": 0.103
+  },
+  "cascade_embed0.7_to_slm": {
+    "distinct": 0.868,
+    "row_weighted": 0.885,
+    "held_subset": {
+      "distinct": 0.705,
+      "row_weighted": 0.596
+    },
+    "escalated": 0.504,
+    "held_wrongly_accepted": 0.026
+  },
+  "cascade_embed0.8_to_slm": {
+    "distinct": 0.844,
+    "row_weighted": 0.867,
+    "held_subset": {
+      "distinct": 0.731,
+      "row_weighted": 0.607
+    },
+    "escalated": 0.745,
+    "held_wrongly_accepted": 0.0
+  },
+  "cascade_embed0.9_to_slm": {
+    "distinct": 0.826,
+    "row_weighted": 0.838,
+    "held_subset": {
+      "distinct": 0.731,
+      "row_weighted": 0.607
+    },
+    "escalated": 0.848,
+    "held_wrongly_accepted": 0.0
+  },
+  "cascade_jevnone_to_slm": {
+    "distinct": 0.934,
+    "row_weighted": 0.939,
+    "held_subset": {
+      "distinct": 0.705,
+      "row_weighted": 0.601
+    },
+    "escalated": 0.161
+  },
+  "jev_hold_none_rate": {
+    "on_held_merchants": 0.974,
+    "on_known_merchants": 0.026
+  },
+  "held_subset_only": {
+    "derive": {
+      "distinct": 0.231,
+      "row_weighted": 0.239
+    },
+    "slm": {
+      "distinct": 0.731,
+      "row_weighted": 0.607
+    },
+    "embed_hold": {
+      "distinct": 0.0,
+      "row_weighted": 0.0
+    },
+    "fuzzy_hold": {
+      "distinct": 0.0,
+      "row_weighted": 0.0
+    }
+  }
+}

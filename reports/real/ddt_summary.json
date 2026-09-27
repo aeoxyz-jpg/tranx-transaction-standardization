@@ -1,0 +1,20 @@
+{
+  "embedding": {
+    "acc": 0.906,
+    "ci95": 0.018,
+    "macro_f1": 0.908,
+    "invalid": 0
+  },
+  "jev": {
+    "acc": 0.807,
+    "ci95": 0.024,
+    "macro_f1": 0.811,
+    "invalid": 0
+  },
+  "slm": {
+    "acc": 0.622,
+    "ci95": 0.03,
+    "macro_f1": 0.391,
+    "invalid": 36
+  }
+}
