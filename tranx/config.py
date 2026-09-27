@@ -130,3 +130,20 @@ PAREN_PAYMENT_HINTS = {
     "ACH": "ach",
     "Bank Transfer": "transfer",
 }
+
+# Synthetic realism (spec 2026-09-28): fictional local merchants, abbreviation noise,
+# repeat structure, and the two evaluation views.
+LOCAL_MERCHANTS_N = 800
+LOCAL_MERCHANT_SHARE = 0.25   # stable-hash share of merchant rows reassigned to a local
+ABBREV_P = 0.15               # per-descriptor chance of dropping interior vowels
+LOCATIONS_ROWS_PER = 6        # a merchant gets ceil(rows / this) locations ...
+LOCATIONS_CAP = 200           # ... capped here
+LOCATIONS_ZIPF_S = 1.1        # row -> location draw is Zipf-weighted (tail of one-offs)
+EVAL_CAPS = {"random": 1000, "unseen": 2000}
+BOOTSTRAP_N = 4000
+RUN_DIR = REPORTS_DIR / "run"
+PREDS_DIR = REPORTS_DIR / "preds"
+# Gold columns produced by synth.feed.build_feed; origin is "source" / "local" (null
+# for merchant-less rows); noise flags are False outside hard mode.
+GOLD_COLUMNS = ["txn_id", "category", "canonical_merchant", "txn_type", "direction",
+                "origin", "noise_abbrev", "noise_trunc"]
