@@ -24,7 +24,8 @@ metadata alone.
 - **Category:** on new brands Jev is best without any training (0.83, embeddings 0.55,
   metadata alone 0.70). With labelled data and familiar merchants, embeddings plus
   logistic regression tie with Jev on synthetic cache misses and beat it on an independent
-  dataset (0.90 vs 0.81).
+  dataset (0.90 vs 0.81). Switching between them row by row, using Jev's merchant answer,
+  is worse than Jev alone.
 - **Combining them** (Jev picks from the list, its "none of these" answers go to the SLM)
   is the pre-set primary comparison, and it points in opposite directions on the two
   datasets. On real statements the cascade beats the SLM alone (+0.044, 95% CI +0.014 to
@@ -227,6 +228,26 @@ with training, 17 categories:
 
 The SLM returned an unparseable or off-list category for 31 of the 1000 rows.
 
+### Category: switching by Jev's merchant answer does not help
+
+`reports/category_routing.json` (exploratory, synthetic model view). Embeddings fail on new
+brands (0.55), so one might keep them for familiar brands and use Jev's category only when
+Jev's merchant answer is `none_of_these`. That rule is worse than Jev's category alone on
+both splits:
+
+| | embedding | Jev | rule | rule - Jev (95% CI) |
+|---|---|---|---|---|
+| random (familiar brands) | 0.788 | **0.797** | 0.771 | -0.025 (-0.050 to -0.001) |
+| unseen (new brands) | 0.550 | **0.830** | 0.812 | -0.018 (-0.038 to -0.004) |
+
+Jev also answers `none_of_these` on merchant-less rows (salary, transfers, fees), and those
+are the one place where embeddings beat Jev on category (0.815 vs 0.750 random, 0.795 vs
+0.744 unseen). Where Jev picked a known brand, Jev's category is the better one (0.833 vs
+0.799 random). The rule therefore gives each row to the weaker route. On this data, take
+the category from Jev for every row; the embedding route earns its place only with
+in-domain labelled data, as on DoDataThings. The rule could not be tested on DoDataThings,
+where Jev was not asked for a merchant.
+
 ## How to choose
 
 Put an exact-descriptor cache first; then the choice depends on whether the merchant is on
@@ -310,8 +331,8 @@ descriptors away and the ideal-cache view then omits the rest, which `eval` warn
 lists, and the exact eval row ids) and per-row predictions under `reports/preds/`. The
 scripts in `scripts/` read those predictions and refuse any file scored against a
 different manifest. Run them from the repo root with `PYTHONPATH=.`:
-`significance.py`, `jev_confidence.py --synthetic-only`, `jev_threshold_cascade.py
---synthetic-only`, `cache_sim.py`, `make_figures.py`, and for the real data
+`significance.py`, `category_routing.py`, `jev_confidence.py --synthetic-only`,
+`jev_threshold_cascade.py --synthetic-only`, `cache_sim.py`, `make_figures.py`, and for the real data
 `eval_moneydata.py --methods ""` (rescores saved predictions; without the flag it calls
 the models again) and `eval_ddt.py`. MoneyData's raw file, labels and aliases are kept
 locally under `data/real/` and are not in this repository, because the source repository
