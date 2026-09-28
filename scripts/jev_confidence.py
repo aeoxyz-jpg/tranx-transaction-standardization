@@ -82,7 +82,14 @@ def saved_moneydata_rows(path: Path) -> pl.DataFrame:
         raise SystemExit(f"--synthetic-only needs the saved MoneyData Jev rows at {path}; "
                          "create them with --extract-moneydata before deleting "
                          "reports/real/jev_confidence_rows.parquet")
-    return pl.read_parquet(path)
+    rows = pl.read_parquet(path)
+    # Saved answers, current scoring rule: re-derive "correct" so a rule change
+    # (aliases, parent brands) reaches these rows without new Jev calls.
+    for r in pl.read_csv(config.DATA_DIR / "real" / "moneydata_aliases.csv").iter_rows(named=True):
+        md.ALIASES[r["canonical_merchant"]] = {norm(a) for a in (r["aliases"] or "").split("|") if a.strip()}
+    correct = [c is not None and c != NONE_OPTION and norm(c) in md.accepted(g)
+               for c, g in zip(rows["choice"].to_list(), rows["gold"].to_list())]
+    return rows.with_columns(pl.Series("correct", correct))
 
 
 def extract_moneydata(rows_path: Path, out_path: Path) -> Path:

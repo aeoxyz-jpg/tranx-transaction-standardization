@@ -8,12 +8,12 @@ MoneyData: 168 low-confidence labels excluded (kept confidence: high, medium).
 
 | comparison | diff | lo | hi | n_clusters | n_rows |
 | --- | --- | --- | --- | --- | --- |
-| jev_slm - slm_fewshot, merchant, synthetic unseen | -0.041 | -0.071 | -0.017 | 231 | 2374 |
-| jev_slm - slm, merchant, MoneyData realistic list | +0.044 | +0.014 | +0.094 | 261 | 547 |
+| jev_slm - slm_fewshot, merchant, synthetic unseen | -0.018 | -0.045 | +0.001 | 213 | 1963 |
+| jev_slm - slm, merchant, MoneyData realistic list | +0.049 | +0.019 | +0.101 | 261 | 547 |
 
-MoneyData row-weighted point estimate (Amazon included): +0.043.
-MoneyData row-weighted CI (Amazon excluded): +0.065 [+0.018, +0.130].
-MoneyData leave-one-merchant-out range: [+0.037, +0.063].
+MoneyData row-weighted point estimate (Amazon included): +0.044.
+MoneyData row-weighted CI (Amazon excluded): +0.067 [+0.020, +0.132].
+MoneyData leave-one-merchant-out range: [+0.042, +0.071].
 
 ## Exploratory
 
@@ -21,9 +21,9 @@ Not pre-registered; DDT clusters by row (descriptor-paired), not by merchant, so
 
 | comparison | diff | lo | hi | n_clusters | n_rows |
 | --- | --- | --- | --- | --- | --- |
-| jev_merchant - embedding, merchant, synthetic random | +0.090 | +0.069 | +0.113 | 501 | 1139 |
-| jev_merchant - embedding, merchant, synthetic unseen | +0.201 | +0.183 | +0.220 | 231 | 2374 |
-| embedding - jev_merchant, category, synthetic random | -0.009 | -0.038 | +0.021 | 619 | 1496 |
-| embedding - jev_merchant, category, synthetic unseen | -0.281 | -0.344 | -0.217 | 334 | 2833 |
+| jev_merchant - embedding, merchant, synthetic random | +0.095 | +0.068 | +0.122 | 393 | 866 |
+| jev_merchant - embedding, merchant, synthetic unseen | +0.207 | +0.190 | +0.225 | 213 | 1963 |
+| embedding - jev_merchant, category, synthetic random | +0.006 | -0.024 | +0.037 | 586 | 1483 |
+| embedding - jev_merchant, category, synthetic unseen | -0.277 | -0.342 | -0.211 | 392 | 2665 |
 | jev - embedding, merchant, MoneyData full list | +0.080 | +0.014 | +0.126 | 261 | 547 |
 | embedding - jev, category, DoDataThings | +0.096 | +0.067 | +0.126 | 1000 | 1000 |

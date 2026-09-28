@@ -1,119 +1,119 @@
 {
-  "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7",
+  "manifest_hash": "0fa461daa6b2c8359d63e4cc1ed59e08e9aa067903f0f1710c26d58ac6203809",
   "rule": "Jev category when Jev's merchant answer is none_of_these, else embedding",
   "random": {
-    "rows": 1496,
-    "jev_none_share": 0.241,
+    "rows": 1483,
+    "jev_none_share": 0.415,
     "accuracy": {
-      "embedding": 0.788,
-      "jev": 0.797,
-      "rule": 0.771,
-      "rows": 1496
+      "embedding": 0.79,
+      "jev": 0.784,
+      "rule": 0.769,
+      "rows": 1483
     },
     "rule_minus_embedding": {
-      "diff": -0.016711229946524065,
-      "lo": -0.03450851198623026,
-      "hi": -0.0006298449612402513,
-      "n_clusters": 619,
-      "n_rows": 1496
+      "diff": -0.020903573836817263,
+      "lo": -0.0414938465012561,
+      "hi": -0.0019744053097974328,
+      "n_clusters": 586,
+      "n_rows": 1483
     },
     "rule_minus_jev": {
-      "diff": -0.02540106951871658,
-      "lo": -0.05039910600255428,
-      "hi": -0.0006816400567418537,
-      "n_clusters": 619,
-      "n_rows": 1496
+      "diff": -0.014834794335805798,
+      "lo": -0.038303762521512734,
+      "hi": 0.00865213642795273,
+      "n_clusters": 586,
+      "n_rows": 1483
     },
     "by_jev_answer": {
       "none_of_these": {
-        "embedding": 0.753,
-        "jev": 0.683,
-        "rule": 0.683,
-        "rows": 360
+        "embedding": 0.816,
+        "jev": 0.766,
+        "rule": 0.766,
+        "rows": 615
       },
       "picked": {
-        "embedding": 0.799,
-        "jev": 0.833,
-        "rule": 0.799,
-        "rows": 1136
+        "embedding": 0.771,
+        "jev": 0.796,
+        "rule": 0.771,
+        "rows": 868
       }
     },
     "by_origin": {
       "local": {
-        "embedding": 0.739,
-        "jev": 0.842,
-        "rule": 0.739,
-        "rows": 291
+        "embedding": 0.738,
+        "jev": 0.806,
+        "rule": 0.743,
+        "rows": 237
       },
       "no merchant": {
-        "embedding": 0.815,
-        "jev": 0.75,
-        "rule": 0.75,
-        "rows": 324
+        "embedding": 0.847,
+        "jev": 0.804,
+        "rule": 0.804,
+        "rows": 577
       },
       "source": {
-        "embedding": 0.795,
-        "jev": 0.799,
-        "rule": 0.79,
-        "rows": 881
+        "embedding": 0.758,
+        "jev": 0.758,
+        "rule": 0.747,
+        "rows": 669
       }
     }
   },
   "unseen": {
-    "rows": 2833,
-    "jev_none_share": 0.938,
+    "rows": 2665,
+    "jev_none_share": 0.965,
     "accuracy": {
-      "embedding": 0.55,
-      "jev": 0.83,
-      "rule": 0.812,
-      "rows": 2833
+      "embedding": 0.552,
+      "jev": 0.829,
+      "rule": 0.816,
+      "rows": 2665
     },
     "rule_minus_embedding": {
-      "diff": 0.2626191316625485,
-      "lo": 0.1993480548371907,
-      "hi": 0.3253774340408643,
-      "n_clusters": 334,
-      "n_rows": 2833
+      "diff": 0.2637898686679174,
+      "lo": 0.19829926556769942,
+      "hi": 0.32739375794828324,
+      "n_clusters": 392,
+      "n_rows": 2665
     },
     "rule_minus_jev": {
-      "diff": -0.018002117896223083,
-      "lo": -0.03750563023736796,
-      "hi": -0.004433019905372705,
-      "n_clusters": 334,
-      "n_rows": 2833
+      "diff": -0.01275797373358349,
+      "lo": -0.030820240456728442,
+      "hi": -0.0003660221733881868,
+      "n_clusters": 392,
+      "n_rows": 2665
     },
     "by_jev_answer": {
       "none_of_these": {
-        "embedding": 0.551,
-        "jev": 0.831,
-        "rule": 0.831,
-        "rows": 2657
+        "embedding": 0.562,
+        "jev": 0.835,
+        "rule": 0.835,
+        "rows": 2571
       },
       "picked": {
-        "embedding": 0.528,
-        "jev": 0.818,
-        "rule": 0.528,
-        "rows": 176
+        "embedding": 0.287,
+        "jev": 0.649,
+        "rule": 0.287,
+        "rows": 94
       }
     },
     "by_origin": {
       "local": {
-        "embedding": 0.536,
-        "jev": 0.858,
-        "rule": 0.851,
-        "rows": 787
+        "embedding": 0.503,
+        "jev": 0.863,
+        "rule": 0.861,
+        "rows": 670
       },
       "no merchant": {
-        "embedding": 0.795,
-        "jev": 0.744,
-        "rule": 0.744,
-        "rows": 352
+        "embedding": 0.842,
+        "jev": 0.791,
+        "rule": 0.791,
+        "rows": 609
       },
       "source": {
-        "embedding": 0.505,
-        "jev": 0.835,
-        "rule": 0.808,
-        "rows": 1694
+        "embedding": 0.449,
+        "jev": 0.829,
+        "rule": 0.805,
+        "rows": 1386
       }
     }
   }

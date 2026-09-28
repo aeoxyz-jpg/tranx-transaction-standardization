@@ -44,7 +44,7 @@ reads, what it is given from upstream, and what it can return.
 
 - **Input:** the description.
 - **How:** prefix strip, then cleaning; the result is the merchant. No category.
-- **Why it is here:** it is the floor. Any merchant score at or near it (0.17 random, 0.21
+- **Why it is here:** it is the floor. Any merchant score at or near it (0.18 random, 0.21
   unseen on the synthetic model view) means the method added nothing beyond string cleanup.
 
 ### `metadata` (baseline)
@@ -56,7 +56,7 @@ reads, what it is given from upstream, and what it can return.
 - **Output:** category only.
 - **Limits:** needs labelled data. In the synthetic feed 60% of merchant rows carry an
   MCC and 85% of those point to the right category (`MCC_COVERAGE`, `MCC_NOISE` in
-  `tranx/config.py`), which is cleaner than real MCCs, so its 0.69-0.70 is optimistic.
+  `tranx/config.py`), which is cleaner than real MCCs, so its 0.69 is optimistic.
 
 ### `rules`
 
@@ -67,7 +67,7 @@ reads, what it is given from upstream, and what it can return.
 - **Category:** the most common category for that MCC in the training rows; without an
   MCC, the most common category for the matched merchant; otherwise the most common
   category overall.
-- **Limits:** a new merchant always falls back to the cleaned text (95% no-match on the
+- **Limits:** a new merchant always falls back to the cleaned text (94% no-match on the
   unseen split), and category needs an MCC or a known merchant.
 
 ### `embedding`
@@ -95,11 +95,11 @@ reads, what it is given from upstream, and what it can return.
   not on the list becomes the most common training category.
 - **Output:** a merchant name it writes itself, so it can name merchants that are on no
   list.
-- **Limits:** it works from what the model already knows: 0.82 on national brands, 0.52
-  on fictional local names, 0.17 when the name is abbreviated. Its spelling of a name can
-  differ from the canonical one (0.48 exact vs 0.76 after normalizing case and
-  punctuation, unseen split). About 500 ms per transaction locally; 31 of 1000
-  DoDataThings rows got an invalid category.
+- **Limits:** it works from what the model already knows: 0.83 on national brands, 0.50
+  on fictional local names, 0.19 when the name is abbreviated (unseen split). Its spelling
+  of a name can differ from the canonical one (0.49 exact vs 0.76 after normalizing case
+  and punctuation). About 460-510 ms per transaction locally; 31 of 1000 DoDataThings rows
+  got an invalid category.
 
 ### `jev_merchant` (TypeSafe Jev)
 
@@ -120,14 +120,14 @@ option, a probability per option and a confidence score. It never writes free te
   pick.
 - **Limits:**
   - It can only name a merchant that retrieval put in the 20 (the right one is there for
-    96% of known-merchant cache misses).
-  - On new merchants it answered `none_of_these` for 93.5% but picked a known name for
-    6.5%. On the synthetic feed those picks are mostly generic or public-sector entries
-    (Pharmacy, Police Department, Marshals) or a similar-sounding local name, at middling
-    confidence (median 0.64). On MoneyData they are sub-brands filed under a parent
-    (DoubleTree by Hilton to Hilton, Uber Eats to Uber) at 0.97 to 0.99. A clean,
-    brand-only list matters more than a confidence threshold.
-  - Each transaction is a network call (about 320 ms serially, 638 input tokens) and the
+    95% of known-merchant cache misses).
+  - On new merchants it answered `none_of_these` for 96.4% but picked a known name for
+    3.6%, mostly a similar-sounding one (Marshals for Marshalls, Mount Sinai for
+    Cedars-Sinai), at middling confidence (median 0.58).
+  - When a new merchant is a sub-brand whose parent is on the list, it picks the parent
+    (DoubleTree by Hilton to Hilton on MoneyData); with the sub-brand on the list it picks
+    the sub-brand. Parent answers count as correct under the scoring rule below.
+  - Each transaction is a network call (about 360 ms serially, 641 input tokens) and the
     description leaves the bank.
 
 ### `jev_slm` (the cascade)
@@ -149,21 +149,20 @@ DoDataThings has no merchant labels).
   a descriptor cache answers the rest. Models only matter for cache misses, and every
   synthetic score below is measured on cache misses.
 - **Known merchants:** Jev picks the right merchant from a known list most often (0.94 on
-  synthetic cache misses, 0.96 on real UK statements), ahead of embeddings (0.85 / 0.88).
+  synthetic cache misses, 0.96 on real UK statements), ahead of embeddings (0.84 / 0.88).
 - **New merchants:** only the SLM can name a merchant that is not on the list (0.76 on
-  brand-disjoint synthetic merchants). It is much better on well-known brands (0.82) than
-  on fictional local shops (0.52) and on the one-off merchants of real statements (0.65).
+  brand-disjoint synthetic merchants). It is much better on well-known brands (0.83) than
+  on fictional local shops (0.50) and on the one-off merchants of real statements (0.66).
 - **Category:** on new brands Jev is best without any training (0.83, embeddings 0.55,
-  metadata alone 0.70). With labelled data and familiar merchants, embeddings plus
+  metadata alone 0.69). With labelled data and familiar merchants, embeddings plus
   logistic regression tie with Jev on synthetic cache misses and beat it on an independent
   dataset (0.90 vs 0.81). Switching between them row by row, using Jev's merchant answer,
-  is worse than Jev alone.
+  does not beat Jev alone.
 - **Combining them** (Jev picks from the list, its "none of these" answers go to the SLM)
-  is the pre-set primary comparison, and it points in opposite directions on the two
-  datasets. On real statements the cascade beats the SLM alone (+0.044, 95% CI +0.014 to
-  +0.094). On synthetic new merchants it loses (-0.041, CI -0.071 to -0.017), because Jev
-  files 6.5% of new merchants under a known name, mostly generic entries such as
-  "Pharmacy". The cascade is worth it only with a clean brand-only list.
+  is the pre-set primary comparison. On real statements the cascade beats the SLM alone
+  (+0.049, 95% CI +0.019 to +0.101). On synthetic new merchants it does not (-0.018, CI
+  -0.045 to +0.001): Jev files 3.6% of them under a similar-sounding known name. It is
+  worth it when most traffic is known merchants and the list holds brands only.
 
 Every number below comes from a file in `reports/`, produced by one run whose inputs are
 pinned in `reports/run/` (see [Reproducing](#reproducing)).
@@ -180,7 +179,7 @@ pinned in `reports/run/` (see [Reproducing](#reproducing)).
 
 - **Fictional local merchants.** A stable-hash quarter of merchant rows in eight
   categories moves to 800 invented local names ("Rustic Stag Bookshop", "Kingsbury
-  Physiotherapy") that share no word with any source label; 17,060 of 75,515 merchant
+  Physiotherapy") that share no word with any source label; 13,152 of 57,791 merchant
   rows end up local (`reports/run/synth_stats.json`). The source merchants are mostly
   national chains the SLM saw in pretraining; the locals test recovering a name the model
   has never seen.
@@ -189,19 +188,30 @@ pinned in `reports/run/` (see [Reproducing](#reproducing)).
   rows are left out of the headline merchant score and reported separately.
 - **Repeat visits.** Each merchant has a number of locations that grows with its row
   count, each location has one fixed descriptor, and visits favour a few locations.
-  This gives 0.159 distinct descriptors per row; MoneyData has 0.181 over all debit rows
+  This gives 0.156 distinct descriptors per row; MoneyData has 0.181 over all debit rows
   and 0.155 over its labelled descriptors (`counts` in
   `reports/real/moneydata_summary_high-medium_aliased.json`). Both the local share and the
   repeat rate are generator parameters, not findings.
 
-**Merchant-less rows.** About 25% of synthetic rows have no merchant: transaction types
-(salary, transfer, loan, donation, fees) and labels that name what was bought rather than
-who was paid (MRI, Toll, Broadband). They are scored for category only.
+**Merchant-less rows.** 42% of synthetic rows have no merchant and are scored for category
+only: transaction types (salary, transfer, loan, donation, fees), labels that name what
+was bought rather than who was paid (MRI, Toll, Broadband), and 79 labels that name a kind
+of place or provider rather than an organization (Pharmacy, Police Department, Hospital,
+Gym; `GENERIC_PROVIDER_LABELS` in `tranx/config.py`). A rollup of "Pharmacy" would merge
+unrelated pharmacies, and on the known list such entries attract new merchants. Named
+organizations stay merchants (IRS, DMV, Post Office, Children's Hospital).
+
+**Parent brands.** A merchant answer that names the gold merchant's parent brand counts
+as correct when both are the same kind of business (DoubleTree by Hilton and Hilton), or
+when the row's category was also predicted right (Walmart Pharmacy answered as Walmart,
+with a healthcare category). The reviewed list is `PARENT_BRANDS` in `tranx/config.py`;
+MoneyData has no category labels, so there only same-business parents are credited (Uber
+Eats answered as Uber stays wrong).
 
 **Splits.** `random` shares merchants between train and eval. `unseen` holds out whole
 brand families by a stable hash, so no eval brand, and no sibling label such as Walmart
-for Walmart Pharmacy, appears in training; the held-out set is 231 merchants, most of them
-fictional locals. For MoneyData the equivalent is a realistic merchant list: merchants
+for Walmart Pharmacy, appears in training; the held-out model view covers 213 merchants,
+most of them fictional locals. For MoneyData the equivalent is a realistic merchant list: merchants
 seen in at least two descriptors are on the list, and the 202 merchants seen once count
 as new.
 
@@ -212,9 +222,9 @@ harness separates two views (`tranx/cli.py`, `eval_rows`):
 
 - **Model view** (the headline): eval rows whose exact descriptor appears in the train
   split are removed, the rest are reduced to one row per descriptor, and descriptors that
-  map to two different merchants are dropped. On the random split 91.7% of eval rows are
-  cache hits, leaving 1,496 descriptors; on the unseen split 22.9% are hits (all
-  merchant-less), leaving 2,833 (`reports/run/eval_stats.json`). These are rare
+  map to two different merchants are dropped. On the random split 91.8% of eval rows are
+  cache hits, leaving 1,483 descriptors; on the unseen split 38.1% are hits (all
+  merchant-less), leaving 2,665 (`reports/run/eval_stats.json`). These are rare
   descriptors, so the scores are lower than scores over all rows and are not comparable to
   earlier versions of this README.
 - **Ideal-cache view:** all eval rows; hits take the stored train label, misses take the
@@ -230,13 +240,13 @@ intervals are merchant-cluster bootstrap half-widths from the same file.
 
 | Route | random: category | random: merchant | unseen: category | unseen: merchant |
 |---|---|---|---|---|
-| cleaner (baseline) | - | 0.17 | - | 0.21 |
-| metadata (baseline) | 0.69 | - | 0.70 | - |
-| rules | 0.75 | 0.70 ±0.04 | 0.48 | 0.19\* |
-| embedding | 0.79 | 0.85 ±0.02 | 0.55 | 0.00 |
-| slm_fewshot | 0.71 | 0.77 ±0.03 | 0.74 | **0.76** ±0.05 |
-| jev_merchant | **0.80** | 0.94 ±0.01 | **0.83** | 0.20\* |
-| jev_slm | 0.79 | **0.95** ±0.01 | **0.83** | 0.71 ±0.06 |
+| cleaner (baseline) | - | 0.18 | - | 0.21 |
+| metadata (baseline) | 0.69 | - | 0.69 | - |
+| rules | 0.74 | 0.68 ±0.04 | 0.50 | 0.19\* |
+| embedding | **0.79** | 0.84 ±0.03 | 0.55 | 0.00 |
+| slm_fewshot | 0.70 | 0.76 ±0.04 | 0.74 | **0.76** ±0.06 |
+| jev_merchant | 0.78 | 0.94 ±0.02 | **0.83** | 0.21\* |
+| jev_slm | 0.78 | **0.95** ±0.02 | **0.83** | 0.74 ±0.06 |
 
 \* On unseen merchants `rules` and `jev_merchant` fall back to the cleaned text, so their
 score is at or below the cleaner's (0.21), not generalization. Embeddings can only return a known
@@ -249,12 +259,12 @@ split, abbreviated rows included):
 
 | Route | national brands | fictional locals | name intact | name abbreviated |
 |---|---|---|---|---|
-| slm_fewshot | 0.82 | 0.52 | 0.83 | 0.17 |
-| jev_slm | 0.76 | 0.51 | 0.79 | 0.14 |
+| slm_fewshot | 0.83 | 0.50 | 0.82 | 0.19 |
+| jev_slm | 0.80 | 0.50 | 0.81 | 0.16 |
 
 The gap between brands and locals is the pretraining advantage the old unseen split
-rewarded. The locals' 0.52 sits closer to MoneyData's one-off merchants (0.65) than the
-brands' 0.82 does.
+rewarded. The locals' 0.50 sits closer to MoneyData's one-off merchants (0.66) than the
+brands' 0.83 does.
 
 **Ideal-cache view** (same file): with a cache in front, random-split merchant accuracy is
 0.97-1.00 for every route except the cleaner (0.93), because 92% of rows never reach a
@@ -270,49 +280,52 @@ the same person's statements), not other customers.
 
 | Comparison (A - B) | Data | diff | 95% CI |
 |---|---|---|---|
-| **jev_slm - slm_fewshot, merchant (primary)** | synthetic unseen | -0.041 | -0.071 to -0.017 |
-| **jev_slm - slm, merchant (primary)** | MoneyData, realistic list | +0.044 | +0.014 to +0.094 |
-| jev_merchant - embedding, merchant | synthetic random | +0.090 | +0.069 to +0.113 |
+| **jev_slm - slm_fewshot, merchant (primary)** | synthetic unseen | -0.018 | -0.045 to +0.001 |
+| **jev_slm - slm, merchant (primary)** | MoneyData, realistic list | +0.049 | +0.019 to +0.101 |
+| jev_merchant - embedding, merchant | synthetic random | +0.095 | +0.068 to +0.122 |
 | jev - embedding, merchant | MoneyData, full list | +0.080 | +0.014 to +0.126 |
-| embedding - jev_merchant, category | synthetic random | -0.009 | -0.038 to +0.021 |
-| embedding - jev_merchant, category | synthetic unseen | -0.281 | -0.344 to -0.217 |
+| embedding - jev_merchant, category | synthetic random | +0.006 | -0.024 to +0.037 |
+| embedding - jev_merchant, category | synthetic unseen | -0.277 | -0.342 to -0.211 |
 | embedding - jev, category | DoDataThings | +0.096 | +0.067 to +0.126 |
 
-For MoneyData, Amazon is 34% of rows; weighting by rows gives +0.043 with Amazon and
-+0.065 (CI +0.018 to +0.130) without it. Per descriptor, dropping any single merchant
-leaves the diff between +0.037 and +0.063. DoDataThings rows are paired by descriptor, not clustered by
-merchant.
+For MoneyData, Amazon is 34% of rows; weighting by rows gives +0.044 with Amazon and
++0.067 (CI +0.020 to +0.132) without it. Per descriptor, dropping any single merchant
+leaves the diff between +0.042 and +0.071. DoDataThings rows are paired by descriptor,
+not clustered by merchant.
 
 ![Forest plot of the paired differences with confidence intervals](reports/figures/significance.png)
 
 ### Jev as a gate for new merchants
 
 On the unseen split no gold merchant is on the list. Jev answered `none_of_these` for
-93.5% of those rows and picked a known merchant for the other 6.5%, with a median
-confidence of 0.64 (`reports/jev_confidence_summary.json`; the picks themselves are in the
-local `reports/real/jev_confidence_rows.parquet`). Most are generic or public-sector
-entries on the list (Pharmacy, Police Department, Marshals).
+96.4% of those rows and picked a known merchant for the other 3.6%, with a median
+confidence of 0.58 (`reports/jev_confidence_summary.json`; the picks themselves are in the
+local `reports/real/jev_confidence_rows.parquet`). Most are similar-sounding names:
+Marshals for Marshalls, Mount Sinai for Cedars-Sinai, Planet Fitness for LA Fitness.
 
 Where the gold is on the list, confidence separates right from wrong picks well: the
-probability that a right pick has higher confidence than a wrong one (AUROC) is 0.98 on
-the synthetic random split and 0.93 to 1.00 on MoneyData. The two datasets fail
-differently, so a confidence threshold helps on one and not the other
-(`reports/jev_threshold_cascade.json`): on the synthetic feed the wrong picks sit at middling
-confidence and a 0.95 threshold recovers most of the loss on new merchants, at a cost on
-known ones; on MoneyData the wrong picks are sub-brands filed under a parent at 0.97 to
-0.99, and the threshold only lowers accuracy.
+probability that a right pick has higher confidence than a wrong one (AUROC) is 0.97 on
+the synthetic random split and 0.96 to 1.00 on MoneyData. A confidence threshold still
+trades one error for another (`reports/jev_threshold_cascade.json`). On the synthetic feed
+a 0.95 threshold closes the small gap on new merchants and costs a lot on known ones. On
+MoneyData it lowers accuracy: of the six wrong picks left after parent-brand credit, most
+are a competitor in the same category at moderate confidence (Ecotricity as Good Energy),
+but two sit at 0.97-0.98 (Poste Italiane as Post Office, and Uber Eats as Uber, which
+cannot be credited without a category label), while the threshold also turns away right
+picks.
 
 This table combines the `jev_merchant` route's picks with the `slm_fewshot` route's answers
 rather than rerunning `jev_slm`, and keeps abbreviated local rows, so its unseen numbers sit
-below the leaderboard's. Its MoneyData row uses a separately saved set of Jev answers that
-differs from the main MoneyData predictions on 2 of 547 descriptors (0.850 here, 0.848 in
-the table below).
+below the leaderboard's. On rows sent to the SLM it judges a parent-brand answer by Jev's
+category. Its MoneyData row uses a separately saved set of Jev answers that differs from
+the main MoneyData predictions on 2 of 547 descriptors (0.857 here, 0.856 in the table
+below).
 
 | Merchant accuracy of the Jev to SLM cascade | no threshold | threshold 0.95 | SLM only |
 |---|---|---|---|
-| Synthetic, known merchants (random) | 0.949 | 0.877 | 0.747 |
-| Synthetic, new merchants (unseen) | 0.683 | 0.720 | 0.723 |
-| MoneyData, realistic list | 0.850 | 0.834 | 0.804 |
+| Synthetic, known merchants (random) | 0.949 | 0.877 | 0.723 |
+| Synthetic, new merchants (unseen) | 0.704 | 0.722 | 0.724 |
+| MoneyData, realistic list | 0.857 | 0.841 | 0.806 |
 
 ### Real UK statements (MoneyData)
 
@@ -321,22 +334,25 @@ low-confidence labels are excluded.
 
 | Setting | fuzzy | embedding | SLM | Jev | Jev, none to SLM |
 |---|---|---|---|---|---|
-| Every merchant on the list, per descriptor | 0.87 | 0.88 | 0.80 | **0.96** | |
-| Realistic list (one-off merchants are new), per descriptor | 0.60 | 0.55 | 0.80 | 0.62 | **0.85** |
-| Every merchant on the list, spend-weighted | 0.72 | 0.72 | 0.57 | **0.77** | |
-| Same, without the largest descriptor | 0.91 | 0.90 | 0.71 | **0.97** | |
-| Realistic list, spend-weighted, without the largest descriptor | | | 0.71 | | **0.73** |
+| Every merchant on the list, per descriptor | 0.87 | 0.88 | 0.81 | **0.96** | |
+| Realistic list (one-off merchants are new), per descriptor | 0.60 | 0.56 | 0.81 | 0.62 | **0.86** |
+| Every merchant on the list, spend-weighted | 0.73 | 0.72 | 0.58 | **0.77** | |
+| Same, without the largest descriptor | 0.92 | 0.90 | 0.72 | **0.97** | |
+| Realistic list, spend-weighted, without the largest descriptor | | | 0.72 | | **0.75** |
 
 With the realistic list, Jev answered `none_of_these` for 95.5% of descriptors whose
 merchant was off the list and for 1.7% of those on it. On the off-list merchants alone the
-SLM gets 0.65.
+SLM gets 0.66. Four off-list merchants are sub-brands whose parent is on the list; Jev
+answered the parent each time (DoubleTree by Hilton as Hilton), and with the full list it
+picked the sub-brand each time. Three of those count as correct under the parent-brand
+rule; Uber Eats as Uber does not, for lack of a category label.
 
 Spend weighting (debit amounts per descriptor) matches the product's rollup KPI, but one
 descriptor dominates it: an investment-platform transfer (`WWW.III.CO.UK DE`, 27 rows)
-carries 19% of all debit spend, and every route misses it (`counts.top_spend_descriptor`). Without it, spend-weighted
-accuracy returns close to the per-descriptor numbers. Averaged per merchant instead of per
-descriptor, the realistic-list scores fall to 0.70 or below, because most merchants in one
-person's statements appear only once.
+carries 19% of all debit spend, and every route misses it (`counts.top_spend_descriptor`).
+Without it, spend-weighted accuracy returns close to the per-descriptor numbers. Averaged
+per merchant instead of per descriptor, the realistic-list scores fall to about 0.71 or
+below, because most merchants in one person's statements appear only once.
 
 ![MoneyData merchant accuracy per descriptor, spend-weighted, and spend-weighted without the largest descriptor](reports/figures/moneydata.png)
 
@@ -355,41 +371,42 @@ The SLM returned an unparseable or off-list category for 31 of the 1000 rows.
 
 `reports/category_routing.json` (exploratory, synthetic model view). Embeddings fail on new
 brands (0.55), so one might keep them for familiar brands and use Jev's category only when
-Jev's merchant answer is `none_of_these`. That rule is worse than Jev's category alone on
-both splits:
+Jev's merchant answer is `none_of_these`. That rule does not beat Jev's category alone:
 
 | | embedding | Jev | rule | rule - Jev (95% CI) |
 |---|---|---|---|---|
-| random (familiar brands) | 0.788 | **0.797** | 0.771 | -0.025 (-0.050 to -0.001) |
-| unseen (new brands) | 0.550 | **0.830** | 0.812 | -0.018 (-0.038 to -0.004) |
+| random (familiar brands) | **0.790** | 0.784 | 0.769 | -0.015 (-0.038 to +0.009) |
+| unseen (new brands) | 0.552 | **0.829** | 0.816 | -0.013 (-0.031 to 0.000) |
 
-Jev also answers `none_of_these` on merchant-less rows (salary, transfers, fees), and those
-are the one place where embeddings beat Jev on category (0.815 vs 0.750 random, 0.795 vs
-0.744 unseen). Where Jev picked a known brand, Jev's category is the better one (0.833 vs
-0.799 random). The rule therefore gives each row to the weaker route. On this data, take
-the category from Jev for every row; the embedding route earns its place only with
-in-domain labelled data, as on DoDataThings. The rule could not be tested on DoDataThings,
-where Jev was not asked for a merchant.
+Jev also answers `none_of_these` on merchant-less rows (salary, transfers, generic
+providers), and those are the one place where embeddings beat Jev on category (0.847 vs
+0.804 random, 0.842 vs 0.791 unseen). Where Jev picked a known brand, Jev's category is the
+better one (0.796 vs 0.771 random). The rule therefore gives each row to the weaker route.
+On this data, take the category from Jev for every row; the embedding route earns its
+place only with in-domain labelled data, as on DoDataThings. The rule could not be tested
+on DoDataThings, where Jev was not asked for a merchant.
 
 ## How to choose
 
 Put an exact-descriptor cache first; then the choice depends on whether the merchant is on
 your list:
 
-![Decision tree for merchant normalization: reuse a cached descriptor; for known merchants use Jev (0.94 synthetic cache misses, 0.96 real, about 320 ms) or embeddings when speed matters (0.85 synthetic, 0.88 real, 6.5 ms); for new merchants use the SLM (0.76 synthetic unseen: 0.82 on brands, 0.52 on fictional locals; 0.65 on real one-off merchants); for mixed traffic the Jev-then-SLM cascade, which helps on real statements (0.85 vs 0.80) and hurts on synthetic new merchants (0.71 vs 0.76) and needs a clean brand-only list.](reports/figures/merchant_decision.png)
+![Decision tree for merchant normalization: reuse a cached descriptor; for known merchants use Jev (0.94 synthetic cache misses, 0.96 real, about 360 ms) or embeddings when speed matters (0.84 synthetic, 0.88 real, 6.5 ms); for new merchants use the SLM (0.76 synthetic unseen: 0.83 on brands, 0.50 on fictional locals; 0.66 on real one-off merchants); for mixed traffic the Jev-then-SLM cascade, which helps on real statements (0.86 vs 0.81), is no better on synthetic new merchants (0.74 vs 0.76, not significant) and needs a brand-only list.](reports/figures/merchant_decision.png)
 
 For the category, the deciding questions are whether you have labelled data and whether
 the merchants are familiar:
 
-![Decision tree for category: with labelled rows and familiar merchants use embeddings plus logistic regression (0.90 on DoDataThings vs Jev 0.81; a tie with Jev on synthetic cache misses, 0.79 vs 0.80); without labelled rows or for new brands use Jev's zero-shot category choice (0.83 synthetic unseen, 0.81 DoDataThings). Reference: metadata alone 0.69 to 0.70, the SLM 0.71 to 0.74.](reports/figures/category_decision.png)
+![Decision tree for category: with labelled rows and familiar merchants use embeddings plus logistic regression (0.90 on DoDataThings vs Jev 0.81; a tie with Jev on synthetic cache misses, 0.79 vs 0.78); without labelled rows or for new brands use Jev's zero-shot category choice (0.83 synthetic unseen, 0.81 DoDataThings). Reference: metadata alone 0.69, the SLM 0.70 to 0.74.](reports/figures/category_decision.png)
 
 The cascade for mixed traffic:
 
 ![Flow of the cascade: a cached descriptor reuses its stored merchant; otherwise fuzzy retrieval of the top 20 known merchants, a Jev Choice among them or none_of_these; a pick becomes the merchant, none_of_these sends the description to the SLM.](reports/figures/jev_slm_cascade.png)
 
-The cascade is only as good as Jev's "not on the list" answer. With generic entries such as
-"Pharmacy" or parent brands such as "Hilton" on the list, Jev files some new merchants
-under them; on the synthetic unseen split it did so for 6.5% of rows. Diagram sources are
+The cascade is only as good as Jev's "not on the list" answer. Keep generic entries such as
+"Pharmacy" off the list: in an earlier run of this benchmark, with those entries still
+counted as merchants, Jev filed 6.5% of new merchants under a known name and the cascade
+lost to the SLM alone (-0.041, significant; `reports/significance.md` at commit 7a630ff); with them removed it filed 3.6%, mostly under
+similar-sounding names, and the gap closed to -0.018 (not significant). Diagram sources are
 in `docs/diagrams/` (Mermaid).
 
 ## Cost at bank scale (a scenario, not a measurement)
@@ -401,12 +418,12 @@ the inference bill is small:
 
 | Setup | per day | per year |
 |---|---|---|
-| Every transaction through Jev | $134 | $49k |
-| Jev to SLM cascade, no cache | $516 | $188k |
+| Every transaction through Jev | $135 | $49k |
+| Jev to SLM cascade, no cache | $517 | $189k |
 | Same, 20% cache misses | $103 | $38k |
 | Same, 5% cache misses | $26 | $9k |
 
-Inputs: Jev at $42 per billion input tokens, output free (typesafe.ai); 638 input tokens
+Inputs: Jev at $42 per billion input tokens, output free (typesafe.ai); 641 input tokens
 per Jev call, measured in this run (`input_tokens` in `reports/leaderboard_hard_jev.json`
 over the model-view rows); 36.4% of cache misses escalated to the SLM (MoneyData
 realistic list); the SLM tier priced as Claude Haiku 4.5 on the Batch API (about 295 input

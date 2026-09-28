@@ -1,46 +1,46 @@
 {
   "rows": 99998,
   "mode": "hard",
-  "distinct_descriptions": 15917,
-  "distinct_per_row": 0.1592,
+  "distinct_descriptions": 15643,
+  "distinct_per_row": 0.1564,
   "all": {
     "source": {
-      "merchants": 350,
-      "families": 337,
-      "rows": 58455
+      "merchants": 271,
+      "families": 262,
+      "rows": 44639
     },
     "local": {
-      "merchants": 799,
-      "families": 783,
-      "rows": 17060
+      "merchants": 781,
+      "families": 766,
+      "rows": 13152
     }
   },
   "random_model_view": {
-    "model_view_n": 1496,
-    "capped_n": 1496,
+    "model_view_n": 1483,
+    "capped_n": 1483,
     "source": {
-      "merchants": 324,
-      "families": 312,
-      "rows": 881
+      "merchants": 248,
+      "families": 240,
+      "rows": 669
     },
     "local": {
-      "merchants": 195,
-      "families": 195,
-      "rows": 291
+      "merchants": 162,
+      "families": 162,
+      "rows": 237
     }
   },
   "unseen_model_view": {
-    "model_view_n": 2833,
-    "capped_n": 2833,
+    "model_view_n": 2665,
+    "capped_n": 2665,
     "source": {
-      "merchants": 67,
-      "families": 66,
-      "rows": 1694
+      "merchants": 55,
+      "families": 54,
+      "rows": 1386
     },
     "local": {
-      "merchants": 167,
-      "families": 166,
-      "rows": 787
+      "merchants": 164,
+      "families": 163,
+      "rows": 670
     }
   }
 }
