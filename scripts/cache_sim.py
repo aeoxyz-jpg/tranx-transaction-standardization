@@ -65,7 +65,9 @@ def synthetic_cache_hit_rate_by_month(feed_path) -> dict[str, float]:
 def main():
     moneydata = moneydata_new_descriptor_rate(config.DATA_DIR / "real" / "moneydata_raw.csv")
     synthetic = synthetic_cache_hit_rate_by_month(config.DATA_DIR / "bank_feed.parquet")
+    from tranx.eval.manifest import file_sha256
     res = {
+        "feed_sha256": file_sha256(config.DATA_DIR / "bank_feed.parquet"),
         "moneydata_new_descriptor_rate_by_year": moneydata,
         "synthetic_cache_hit_rate_by_month": {
             "note": "parameter illustration; dates are uniform",

@@ -192,7 +192,21 @@ def main():
         put("jev_hold", [p or "" for p in run_jev(descs, vocab_hold)])
     preds.write_parquet(pred_path)
 
-    res = {"spend_join_coverage": join_coverage}
+    top = sdf.sort("spend", descending=True).row(0, named=True)
+    labelled_spend = float(spend.sum())
+    res = {"spend_join_coverage": join_coverage,
+           # Counts the README quotes, so each is traceable to this file.
+           "counts": {
+               "labelled_descriptors": len(descs), "labelled_rows": int(n.sum()),
+               "merchants": len(vocab_all), "new_merchants_realistic_list": len(held),
+               "raw_debit_descriptors": sdf.height, "raw_debit_rows": int(sdf["n_rows"].sum()),
+               "amazon_row_share": round(float(n[np.array(gold) == "Amazon"].sum() / n.sum()), 3),
+               "top_spend_descriptor": {
+                   "description": top["description"], "rows": int(top["n_rows"]),
+                   "share_of_raw_debit_spend": round(top["spend"] / float(sdf["spend"].sum()), 3),
+                   "share_of_labelled_spend": round(float(spend[np.array(descs) == top["description"]].sum())
+                                                    / labelled_spend, 3) if labelled_spend else None},
+           }}
     for col in [c for c in preds.columns if c not in ("description", "n", "canonical_merchant") and not c.endswith("_cos")]:
         res[col] = score(preds[col].to_list(), gold, n, spend=spend)
     def held_score(pred):

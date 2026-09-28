@@ -293,6 +293,13 @@ def run(leaderboard_path: Path, significance_path: Path, moneydata_path: Path, o
         fig_latency(leaderboard, out_dir)
 
     significance = _load_json(significance_path)
+    # Both inputs must come from the same eval run (same manifest).
+    if leaderboard and significance:
+        lb_hashes = {r.get("manifest_hash") for r in leaderboard}
+        sig_hash = significance.get("manifest_hash")
+        if sig_hash and lb_hashes != {sig_hash}:
+            raise SystemExit(f"make_figures: leaderboard {lb_hashes} and significance {sig_hash} "
+                             "come from different runs")
     if significance is not None:
         fig_significance(significance, out_dir)
 

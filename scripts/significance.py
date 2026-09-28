@@ -204,7 +204,7 @@ def build_report(manifest_path: Path, preds_dir: Path,
     for section in (primary, exploratory):
         for key, entry in section.items():
             entry["comparison"] = COMPARISONS[key]
-    return {"primary": primary, "exploratory": exploratory,
+    return {"primary": primary, "exploratory": exploratory, "manifest_hash": manifest["manifest_hash"],
            "notes": {"moneydata_filter": filter_note, "ci_interpretation": CI_NOTE}}
 
 

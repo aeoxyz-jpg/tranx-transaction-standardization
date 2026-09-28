@@ -79,3 +79,14 @@ def test_load_preds_refuses_extra_coverage(tmp_path):
     mf.save_preds(df, tmp_path / "random_model_rules.parquet", m["manifest_hash"])
     with pytest.raises(mf.ManifestError):
         mf.load_preds("random", "model", "rules", m, preds_dir=tmp_path)
+
+
+def test_load_preds_refuses_an_edited_manifest(tmp_path):
+    import pytest
+    import polars as pl
+    from tranx.eval.manifest import build_manifest, save_preds, load_preds, ManifestError
+    m = build_manifest(splits={"random": {"model": ["T1"]}})
+    save_preds(pl.DataFrame({"txn_id": ["T1"]}), tmp_path / "random_model_r.parquet", m["manifest_hash"])
+    m["splits"]["random"]["model"] = ["T1", "T2"]  # edited after writing, hash left alone
+    with pytest.raises(ManifestError):
+        load_preds("random", "model", "r", m, preds_dir=tmp_path)

@@ -139,7 +139,8 @@ ABBREV_P = 0.15               # per-descriptor chance of dropping interior vowel
 LOCATIONS_ROWS_PER = 3        # a merchant gets ceil(rows / this) locations ...
 LOCATIONS_CAP = 200           # ... capped here
 LOCATIONS_ZIPF_S = 1.5        # row -> location draw is Zipf-weighted (tail of one-offs)
-EVAL_CAPS = {"random": 1000, "unseen": 2000}
+# High enough that no model-view descriptor is sampled away (random 1,496, unseen 2,833).
+EVAL_CAPS = {"random": 5000, "unseen": 5000}
 BOOTSTRAP_N = 4000
 RUN_DIR = REPORTS_DIR / "run"
 PREDS_DIR = REPORTS_DIR / "preds"

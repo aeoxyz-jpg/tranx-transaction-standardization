@@ -259,7 +259,7 @@ def test_eval_writes_manifest_and_loadable_preds(fixture_df, tmp_path, monkeypat
                 assert df["candidates"].null_count() == len(df)  # no Jev route here
     stats = json.loads((tmp_path / "reports" / "run" / "eval_stats.json").read_text())
     assert set(stats["random"]) == {"model", "ideal_cache"}
-    results = json.loads((tmp_path / "reports" / "leaderboard.json").read_text())
+    results = json.loads((tmp_path / "reports" / "leaderboard_hard.json").read_text())
     by = {(r["split"], r["view"], r["route"]): r for r in results}
     assert by[("random", "model", "cleaner")]["category_acc"] == "-"
     assert by[("random", "model", "metadata")]["merchant_norm"] == "-"

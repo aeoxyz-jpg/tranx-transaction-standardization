@@ -26,7 +26,8 @@
       }
     },
     "no_match_rate": 0.291,
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "embedding",
@@ -55,7 +56,8 @@
       }
     },
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "slm_fewshot",
@@ -84,7 +86,8 @@
       }
     },
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "jev_merchant",
@@ -114,7 +117,8 @@
     },
     "no_match_rate": 0.0495,
     "retrieval_recall": 0.9573,
-    "input_tokens": 949699
+    "input_tokens": 949699,
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "jev_slm",
@@ -145,7 +149,8 @@
     "no_match_rate": 0.0503,
     "retrieval_recall": 0.9573,
     "escalated": 0.05,
-    "input_tokens": 949699
+    "input_tokens": 949699,
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "cleaner",
@@ -174,7 +179,8 @@
       }
     },
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "metadata",
@@ -194,7 +200,8 @@
     "dedup_ratio": "-",
     "gold_dedup_ratio": "-",
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "rules",
@@ -225,7 +232,8 @@
     "kpi_within_tol": 0.9721,
     "kpi_mae": 3.6136,
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "embedding",
@@ -256,7 +264,8 @@
     "kpi_within_tol": 0.9846,
     "kpi_mae": 2.134,
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "slm_fewshot",
@@ -287,7 +296,8 @@
     "kpi_within_tol": 0.9779,
     "kpi_mae": 3.0527,
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "jev_merchant",
@@ -319,7 +329,8 @@
     "kpi_mae": 0.5916,
     "no_match_rate": "-",
     "retrieval_recall": "-",
-    "input_tokens": 949699
+    "input_tokens": 949699,
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "jev_slm",
@@ -352,7 +363,8 @@
     "no_match_rate": "-",
     "retrieval_recall": "-",
     "escalated": "-",
-    "input_tokens": 949699
+    "input_tokens": 949699,
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "cleaner",
@@ -383,7 +395,8 @@
     "kpi_within_tol": 0.9286,
     "kpi_mae": 8.5478,
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "metadata",
@@ -405,7 +418,8 @@
     "kpi_within_tol": "-",
     "kpi_mae": "-",
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "rules",
@@ -434,7 +448,8 @@
       }
     },
     "no_match_rate": 0.9496,
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "embedding",
@@ -463,7 +478,8 @@
       }
     },
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "slm_fewshot",
@@ -492,7 +508,8 @@
       }
     },
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "jev_merchant",
@@ -522,7 +539,8 @@
     },
     "no_match_rate": 0.9347,
     "retrieval_recall": 0.0,
-    "input_tokens": 1810887
+    "input_tokens": 1810887,
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "jev_slm",
@@ -553,7 +571,8 @@
     "no_match_rate": 0.9367,
     "retrieval_recall": 0.0,
     "escalated": 0.937,
-    "input_tokens": 1810887
+    "input_tokens": 1810887,
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "cleaner",
@@ -582,7 +601,8 @@
       }
     },
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "metadata",
@@ -602,7 +622,8 @@
     "dedup_ratio": "-",
     "gold_dedup_ratio": "-",
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "rules",
@@ -633,7 +654,8 @@
     "kpi_within_tol": 0.1806,
     "kpi_mae": 110.8243,
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "embedding",
@@ -664,7 +686,8 @@
     "kpi_within_tol": 0.0,
     "kpi_mae": 133.0279,
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "slm_fewshot",
@@ -695,7 +718,8 @@
     "kpi_within_tol": 0.7332,
     "kpi_mae": 33.0415,
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "jev_merchant",
@@ -727,7 +751,8 @@
     "kpi_mae": 103.9534,
     "no_match_rate": "-",
     "retrieval_recall": "-",
-    "input_tokens": 1810887
+    "input_tokens": 1810887,
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "jev_slm",
@@ -760,7 +785,8 @@
     "no_match_rate": "-",
     "retrieval_recall": "-",
     "escalated": "-",
-    "input_tokens": 1810887
+    "input_tokens": 1810887,
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "cleaner",
@@ -791,7 +817,8 @@
     "kpi_within_tol": 0.2136,
     "kpi_mae": 100.789,
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   },
   {
     "route": "metadata",
@@ -813,6 +840,7 @@
     "kpi_within_tol": "-",
     "kpi_mae": "-",
     "no_match_rate": "-",
-    "retrieval_recall": "-"
+    "retrieval_recall": "-",
+    "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7"
   }
 ]

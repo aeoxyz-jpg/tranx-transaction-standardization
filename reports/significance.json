@@ -55,6 +55,7 @@
       "n_rows": 2374
     }
   },
+  "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7",
   "notes": {
     "ci_interpretation": "These CIs describe a hypothetical population of merchants like these (the same generator, or the same one person's statements); they are not a claim about other customers.",
     "moneydata_filter": "168 low-confidence labels excluded (kept confidence: high, medium)"

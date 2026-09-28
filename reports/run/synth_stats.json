@@ -17,30 +17,30 @@
   },
   "random_model_view": {
     "model_view_n": 1496,
-    "capped_n": 1000,
+    "capped_n": 1496,
     "source": {
-      "merchants": 281,
-      "families": 274,
-      "rows": 588
+      "merchants": 324,
+      "families": 312,
+      "rows": 881
     },
     "local": {
-      "merchants": 151,
-      "families": 151,
-      "rows": 200
+      "merchants": 195,
+      "families": 195,
+      "rows": 291
     }
   },
   "unseen_model_view": {
     "model_view_n": 2833,
-    "capped_n": 2000,
+    "capped_n": 2833,
     "source": {
       "merchants": 67,
       "families": 66,
-      "rows": 1196
+      "rows": 1694
     },
     "local": {
-      "merchants": 154,
-      "families": 153,
-      "rows": 555
+      "merchants": 167,
+      "families": 166,
+      "rows": 787
     }
   }
 }

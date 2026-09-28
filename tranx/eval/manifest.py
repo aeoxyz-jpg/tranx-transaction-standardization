@@ -56,6 +56,8 @@ def load_preds(split: str, view: str, route: str, manifest: dict,
     path = preds_dir / f"{split}_{view}_{route}.parquet"
     df = pl.read_parquet(path)
 
+    if manifest_hash(manifest) != manifest.get("manifest_hash"):
+        raise ManifestError("manifest was edited after it was written (hash does not match)")
     hashes = df["manifest_hash"].unique().to_list()
     if len(hashes) != 1 or hashes[0] != manifest["manifest_hash"]:
         raise ManifestError(f"{path}: manifest_hash mismatch")

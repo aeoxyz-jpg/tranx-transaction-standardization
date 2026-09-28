@@ -13,7 +13,7 @@ metadata alone.
 ## Results in brief
 
 - **Most transactions need no model.** A bank sees the same descriptor again and again.
-  In one person's real statements only 15.5% of rows carry a descriptor not seen before;
+  In one person's real statements 730 distinct descriptors cover 4,043 debit rows (18%);
   a descriptor cache answers the rest. Models only matter for cache misses, and every
   synthetic score below is measured on cache misses.
 - **Known merchants:** Jev picks the right merchant from a known list most often (0.94 on
@@ -40,7 +40,7 @@ pinned in `reports/run/` (see [Reproducing](#reproducing)).
 | Source | What it is | Labels | Used for |
 |---|---|---|---|
 | Synthetic hard feed | 100k transactions built from the public HF dataset `mitulshah/transaction-categorization`, with customers, amounts, payment methods, noisy MCCs, card-network-style dirty descriptors, fictional local merchants and repeat visits | Silver: merchant from the clean source description or the fictional name; category from the source | Main leaderboard, both splits |
-| MoneyData (real) | One person's anonymized UK bank statements, 2015-2022 ([Firat et al. 2023](https://github.com/thevisgroup/MoneyVis)); 547 card and direct-debit descriptors, 3,521 rows | Merchant labels drafted by an LLM, audited by a second model; **not human-verified**; alias table for legitimate alternative names | Merchant normalization on real noise |
+| MoneyData (real) | One person's anonymized UK bank statements, 2015-2022 ([Firat et al. 2023](https://github.com/thevisgroup/MoneyVis)); 547 labelled card and direct-debit descriptors, 3,521 rows | Merchant labels drafted by an LLM, audited by a second model; **not human-verified**; alias table for legitimate alternative names | Merchant normalization on real noise |
 | DoDataThings v2 | Independently generated synthetic US descriptors, 17 categories ([HF](https://huggingface.co/datasets/DoDataThings/us-bank-transaction-categories-v2)) | Category only | Category on noise that Tranx's own generator did not produce |
 
 **What the generator adds** (`tranx/synth/`, settings in `tranx/config.py`):
@@ -56,8 +56,10 @@ pinned in `reports/run/` (see [Reproducing](#reproducing)).
   rows are left out of the headline merchant score and reported separately.
 - **Repeat visits.** Each merchant has a number of locations that grows with its row
   count, each location has one fixed descriptor, and visits favour a few locations.
-  This gives 0.159 distinct descriptors per row; MoneyData has 0.155. Both the local share
-  and the repeat rate are generator parameters, not findings.
+  This gives 0.159 distinct descriptors per row; MoneyData has 0.181 over all debit rows
+  and 0.155 over its labelled descriptors (`counts` in
+  `reports/real/moneydata_summary_high-medium_aliased.json`). Both the local share and the
+  repeat rate are generator parameters, not findings.
 
 **Merchant-less rows.** About 25% of synthetic rows have no merchant: transaction types
 (salary, transfer, loan, donation, fees) and labels that name what was bought rather than
@@ -122,7 +124,7 @@ intervals are merchant-cluster bootstrap half-widths from the same file.
 | jev_slm | 0.79 | **0.95** ±0.01 | **0.83** | 0.71 ±0.06 |
 
 \* On unseen merchants `rules` and `jev_merchant` fall back to the cleaned text, so their
-score is the cleaner's (0.21), not generalization. Embeddings can only return a known
+score is at or below the cleaner's (0.21), not generalization. Embeddings can only return a known
 name and score 0 by construction.
 
 ![Merchant accuracy per route on the model view, random vs unseen split, with confidence intervals](reports/figures/merchant_norm.png)
@@ -162,8 +164,8 @@ the same person's statements), not other customers.
 | embedding - jev, category | DoDataThings | +0.096 | +0.067 to +0.126 |
 
 For MoneyData, Amazon is 34% of rows; weighting by rows gives +0.043 with Amazon and
-+0.065 (CI +0.018 to +0.130) without it, and dropping any single merchant leaves the diff
-between +0.037 and +0.063. DoDataThings rows are paired by descriptor, not clustered by
++0.065 (CI +0.018 to +0.130) without it. Per descriptor, dropping any single merchant
+leaves the diff between +0.037 and +0.063. DoDataThings rows are paired by descriptor, not clustered by
 merchant.
 
 ![Forest plot of the paired differences with confidence intervals](reports/figures/significance.png)
@@ -176,8 +178,11 @@ On the unseen split no gold merchant is on the list. Jev answered `none_of_these
 separates right from wrong picks well: the probability that a right pick has higher
 confidence than a wrong one (AUROC) is 0.98 on the synthetic random split and 0.93 to 1.00
 on MoneyData. A confidence threshold trades one error for the other
-(`reports/jev_threshold_cascade.json`; this script keeps abbreviated local rows, so its
-unseen numbers sit below the leaderboard's):
+(`reports/jev_threshold_cascade.json`). This table combines the `jev_merchant` route's
+picks with the `slm_fewshot` route's answers rather than rerunning `jev_slm`, and keeps
+abbreviated local rows, so its unseen numbers sit below the leaderboard's. Its MoneyData
+row uses a separately saved set of Jev answers that differs from the main MoneyData
+predictions on 2 of 547 descriptors (0.850 here, 0.848 in the table below).
 
 | Merchant accuracy of the Jev to SLM cascade | no threshold | threshold 0.95 | SLM only |
 |---|---|---|---|
@@ -204,7 +209,7 @@ SLM gets 0.65.
 
 Spend weighting (debit amounts per descriptor) matches the product's rollup KPI, but one
 descriptor dominates it: an investment-platform transfer (`WWW.III.CO.UK DE`, 27 rows)
-carries about 20% of all debit spend, and every route misses it. Without it, spend-weighted
+carries 19% of all debit spend, and every route misses it (`counts.top_spend_descriptor`). Without it, spend-weighted
 accuracy returns close to the per-descriptor numbers. Averaged per merchant instead of per
 descriptor, the realistic-list scores fall to 0.70 or below, because most merchants in one
 person's statements appear only once.
@@ -297,9 +302,9 @@ ollama pull qwen2.5:3b-instruct
 
 `run.sh` scores the local routes into `reports/leaderboard_hard.md`. With
 `TYPESAFE_API_KEY` set, or the key in the macOS keychain under `jev-api-key`, it also scores
-the Jev routes into `reports/leaderboard_hard_jev.md`. The published numbers used
-`eval --cap-random 5000 --cap-unseen 5000` so that no model-view descriptor is sampled
-away (about two hours locally).
+the Jev routes into `reports/leaderboard_hard_jev.md` (about two hours locally). The
+default caps (5,000 per split) keep every model-view descriptor; a smaller cap samples
+descriptors away and the ideal-cache view then omits the rest, which `eval` warns about.
 
 `eval` writes `reports/run/manifest.json` (hashes of the feed, gold, prompt and candidate
 lists, and the exact eval row ids) and per-row predictions under `reports/preds/`. The
@@ -307,7 +312,8 @@ scripts in `scripts/` read those predictions and refuse any file scored against 
 different manifest. Run them from the repo root with `PYTHONPATH=.`:
 `significance.py`, `jev_confidence.py --synthetic-only`, `jev_threshold_cascade.py
 --synthetic-only`, `cache_sim.py`, `make_figures.py`, and for the real data
-`eval_moneydata.py` and `eval_ddt.py`. MoneyData's raw file, labels and aliases are kept
+`eval_moneydata.py --methods ""` (rescores saved predictions; without the flag it calls
+the models again) and `eval_ddt.py`. MoneyData's raw file, labels and aliases are kept
 locally under `data/real/` and are not in this repository, because the source repository
 carries no licence and the labels are unverified.
 

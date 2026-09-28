@@ -1,5 +1,20 @@
 {
   "spend_join_coverage": 1.0,
+  "counts": {
+    "labelled_descriptors": 547,
+    "labelled_rows": 3521,
+    "merchants": 261,
+    "new_merchants_realistic_list": 202,
+    "raw_debit_descriptors": 730,
+    "raw_debit_rows": 4043,
+    "amazon_row_share": 0.342,
+    "top_spend_descriptor": {
+      "description": "WWW.III.CO.UK DE",
+      "rows": 27,
+      "share_of_raw_debit_spend": 0.191,
+      "share_of_labelled_spend": 0.202
+    }
+  },
   "derive": {
     "distinct": 0.177,
     "row_weighted": 0.155,

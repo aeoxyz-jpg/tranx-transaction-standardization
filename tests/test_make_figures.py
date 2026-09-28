@@ -153,3 +153,16 @@ def test_empty_leaderboard_all_dash_skips_without_exception(tmp_path, capsys):
     captured = capsys.readouterr()
     assert "skipping merchant_norm.png" in captured.out
     assert not (tmp_path / "merchant_norm.png").exists()
+
+
+def test_run_refuses_leaderboard_and_significance_from_different_runs(tmp_path):
+    import json
+    import pytest
+    from make_figures import run
+    lb = tmp_path / "lb.json"
+    sig = tmp_path / "sig.json"
+    lb.write_text(json.dumps([{"route": "rules", "split": "random", "view": "model",
+                               "merchant_norm": 0.5, "manifest_hash": "a"}]))
+    sig.write_text(json.dumps({"primary": {}, "exploratory": {}, "manifest_hash": "b"}))
+    with pytest.raises(SystemExit):
+        run(lb, sig, tmp_path / "missing.json", tmp_path / "out")

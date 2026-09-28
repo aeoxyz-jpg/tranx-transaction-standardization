@@ -1,4 +1,5 @@
 {
+  "manifest_hash": "6f74b08a61b1693526afd558d2622cda2e22648a3d10d496dfba56c4368bc1d7",
   "random": {
     "model": {
       "n_eval": 20000,

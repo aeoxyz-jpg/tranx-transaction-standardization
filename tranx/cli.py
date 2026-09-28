@@ -46,7 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
                              f"(default {config.EVAL_CAPS['unseen']})")
     p_eval.add_argument("--routes", default="rules,embedding,slm_fewshot",
                         help="comma-separated routes to score")
-    p_eval.add_argument("--name", default="leaderboard.md",
+    p_eval.add_argument("--name", default="leaderboard_hard.md",
                         help="leaderboard file name under reports/")
     p_eval.add_argument("--also", default="",
                         help="optional extra leaderboard: NAME=route1,route2 (subset of --routes)")
@@ -543,13 +543,19 @@ def main(argv=None) -> None:
                   f"(of {vs['model'].stats['model_view_n']} descriptors), ideal-cache view "
                   f"{vs['ideal_cache'].stats['view_n']} rows, "
                   f"cache_hit_rate {vs['model'].stats['cache_hit_rate']}", flush=True)
+            # A cap below the model view drops the other misses from the ideal-cache view too.
+            st = vs["model"].stats
+            if st["capped_n"] < st["model_view_n"]:
+                print(f"WARNING {s}: cap keeps {st['capped_n']} of {st['model_view_n']} "
+                      "model-view descriptors; the ideal-cache view omits the rest", flush=True)
         # The manifest pins data, splits and prompts before any prediction is saved.
         manifest = _eval_manifest(views, feed_path, gold_path, caps, config.SEED)
         write_manifest(manifest)
         mhash = manifest["manifest_hash"]
         config.RUN_DIR.mkdir(parents=True, exist_ok=True)
         (config.RUN_DIR / "eval_stats.json").write_text(json.dumps(
-            {s: {v: vs[v].stats for v in VIEWS} for s, vs in views.items()}, indent=2))
+            {"manifest_hash": mhash,
+             **{s: {v: vs[v].stats for v in VIEWS} for s, vs in views.items()}}, indent=2))
         results = []
         by = {}  # (split, view, route) -> preds parquet frame
         for split_name, vs in views.items():
@@ -565,6 +571,7 @@ def main(argv=None) -> None:
                     save_preds(pdf, config.PREDS_DIR / f"{split_name}_{view}_{name}.parquet",
                                mhash)
                     result = _score(name, route, er, pdf, model_pdf, timing)
+                    result["manifest_hash"] = mhash
                     results.append(result)
                     by[(split_name, view, name)] = pdf
                     print({k: v for k, v in result.items() if k != "subsets"}, flush=True)
