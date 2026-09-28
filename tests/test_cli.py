@@ -1,5 +1,5 @@
 import polars as pl
-from tranx.cli import build_parser, _cap_eval, _split_unseen
+from tranx.cli import build_parser, _split_unseen
 
 
 def test_parser_has_subcommands():
@@ -46,22 +46,6 @@ def test_eval_subcommand():
 def test_eval_cap_flags_override():
     args = build_parser().parse_args(["eval", "--cap-random", "5", "--cap-unseen", "7"])
     assert (args.cap_random, args.cap_unseen) == (5, 7)
-
-
-def test_cap_eval_subsamples_and_aligns():
-    feed = pl.DataFrame({"txn_id": [f"T{i}" for i in range(10)]})
-    gold = pl.DataFrame({"txn_id": [f"T{i}" for i in range(10)], "v": list(range(10))})
-    capped_feed, capped_gold = _cap_eval(feed, gold, cap=4, seed=42)
-    assert len(capped_feed) == 4
-    # gold is filtered to exactly the capped txn_ids
-    assert set(capped_gold["txn_id"]) == set(capped_feed["txn_id"])
-
-
-def test_cap_eval_noop_when_cap_zero_or_larger():
-    feed = pl.DataFrame({"txn_id": ["T0", "T1"]})
-    gold = pl.DataFrame({"txn_id": ["T0", "T1"]})
-    assert len(_cap_eval(feed, gold, cap=0, seed=42)[0]) == 2
-    assert len(_cap_eval(feed, gold, cap=99, seed=42)[0]) == 2
 
 
 def test_split_unseen_has_disjoint_merchants():
@@ -273,3 +257,18 @@ def test_eval_writes_manifest_and_loadable_preds(fixture_df, tmp_path, monkeypat
     assert by[("random", "model", "rules")]["headline_excluded"] == n_excl
     assert by[("random", "model", "rules")]["merchant_rows"] == g.height - n_excl
     assert by[("random", "ideal_cache", "rules")]["headline_excluded"] == 0
+
+
+def test_run_scores_one_route_on_the_model_view(fixture_df, tmp_path, monkeypatch, capsys):
+    from tranx import config
+    from tranx.cli import main, eval_rows
+    from tranx.synth.feed import build_feed
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path / "data")
+    feed, gold = build_feed(fixture_df, hard=True)
+    (tmp_path / "data").mkdir()
+    feed.write_parquet(tmp_path / "data" / "bank_feed.parquet")
+    gold.write_parquet(tmp_path / "data" / "gold.parquet")
+    main(["run", "--route", "cleaner", "--split", "random"])
+    out = capsys.readouterr().out
+    er = eval_rows("random", "model", feed, gold)
+    assert f"'rows': {len(er.eval_feed)}" in out and "'view': 'model'" in out

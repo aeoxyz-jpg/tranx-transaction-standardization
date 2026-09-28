@@ -23,9 +23,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_synth.add_argument("--hard", action="store_true",
                          help="dirty the feed descriptors into card-network-style noise")
 
-    p_run = sub.add_parser("run", help="run one route over the feed")
+    p_run = sub.add_parser("run", help="score one route on one split's model view (as eval does)")
     p_run.add_argument("--route", required=True,
-                       choices=["rules", "embedding", "slm_fewshot", "slm_lora", "jev", "jev_merchant", "jev_slm"])
+                       choices=["rules", "embedding", "slm_fewshot", "slm_lora", "jev", "jev_merchant",
+                                "jev_slm", "cleaner", "metadata"])
     p_run.add_argument("--adapter-path", default="adapters/qwen-hard",
                        help="LoRA adapter dir for the slm_lora route")
     p_run.add_argument("--base-model", default=config.MLX_BASE,
@@ -33,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--split", choices=["random", "unseen"], default="random",
                        help="random 80/20 split, or merchant-disjoint (unseen merchants)")
     p_run.add_argument("--eval-cap", type=int, default=0,
-                       help="cap eval rows (0 = no cap)")
+                       help="cap model-view descriptors (0 = config.EVAL_CAPS)")
     p_run.add_argument("--slm-model", default=config.SLM_MODEL,
                        help="Ollama model for the slm_fewshot route")
 
@@ -94,15 +95,6 @@ def _split_unseen(feed: pl.DataFrame, gold: pl.DataFrame, seed: int, frac: float
 
 
 _SPLITTERS = {"random": _split_random, "unseen": _split_unseen}
-
-
-def _cap_eval(eval_feed: pl.DataFrame, eval_gold: pl.DataFrame, cap: int, seed: int):
-    """Deterministically subsample the eval set so all routes score the same rows."""
-    if cap <= 0 or len(eval_feed) <= cap:
-        return eval_feed, eval_gold
-    capped = eval_feed.sample(n=cap, seed=seed)
-    keep = set(capped["txn_id"].to_list())
-    return capped, eval_gold.filter(pl.col("txn_id").is_in(keep))
 
 
 VIEWS = ("model", "ideal_cache")
@@ -250,39 +242,6 @@ def _make_route(name: str, slm_model: str | None = None,
         return SlmFewshotRoute(chat_fn=chat, prompt_fn=finetune_prompt,
                                strip_prefix=False, name="slm_lora")
     return SlmFewshotRoute(model=slm_model)
-
-
-def _evaluate(route, train_feed, train_gold, eval_feed, eval_gold):
-    route.fit(train_feed, train_gold)
-    preds, timing = run_route(route, eval_feed)
-    # Merchant metrics are scored only where the gold has a merchant; transaction-type
-    # rows (salary, transfer, ...) count for category only.
-    m_ids = eval_gold.filter(pl.col("canonical_merchant").is_not_null())["txn_id"]
-    m_feed = eval_feed.filter(pl.col("txn_id").is_in(m_ids))
-    m_preds = preds.filter(pl.col("txn_id").is_in(m_ids))
-    m_gold = eval_gold.filter(pl.col("txn_id").is_in(m_ids))
-    kpi = metrics.merchant_spend_kpi(m_feed, m_preds, m_gold)
-    ci = metrics.cluster_bootstrap_ci(preds, eval_gold, seed=config.SEED)
-    extra = {}
-    if getattr(route, "_fallback", None) is not None:
-        esc = getattr(route, "escalated_ids", set())
-        extra["escalated"] = round(sum(t in esc for t in m_ids) / max(1, len(m_ids)), 3)
-    return {
-        "route": route.name,
-        "category_acc": metrics.category_accuracy(preds, eval_gold),
-        "macro_f1": metrics.category_macro_f1(preds, eval_gold),
-        "merchant_acc": metrics.merchant_exact_match(m_preds, m_gold),
-        "merchant_norm": metrics.merchant_normalized_match(m_preds, m_gold),
-        "dedup_ratio": metrics.dedup_ratio(m_preds, m_feed["description"].n_unique()),
-        "kpi_within_tol": kpi["within_tolerance"],
-        "kpi_mae": kpi["mae"],
-        "avg_ms": timing["avg_ms"],
-        "merchant_rows": len(m_ids),
-        "category_ci": ci["category"],
-        "merchant_norm_ci": ci["merchant_norm"],
-        "gold_dedup_ratio": metrics.dedup_ratio(m_gold, m_feed["description"].n_unique()),
-        **extra,
-    }, preds
 
 
 def _sha256_text(text: str) -> str:
@@ -517,11 +476,19 @@ def main(argv=None) -> None:
         return
 
     if args.command == "run":
-        tf, tg, ef, eg = _SPLITTERS[args.split](feed, gold, config.SEED)
-        ef, eg = _cap_eval(ef, eg, args.eval_cap, config.SEED)
+        # Same rows and scoring as eval's model view, for one route and one split;
+        # nothing is written, so it cannot mix with a published run.
+        caps = dict(config.EVAL_CAPS)
+        if args.eval_cap > 0:
+            caps[args.split] = args.eval_cap
+        er = eval_rows(args.split, "model", feed, gold, caps=caps, seed=config.SEED)
         route = _make_route(args.route, slm_model=args.slm_model,
                             adapter_path=args.adapter_path, base_model=args.base_model)
-        result, _ = _evaluate(route, tf, tg, ef, eg)
+        route.fit(er.train_feed, er.train_gold)
+        preds, timing = run_route(route, er.eval_feed)
+        pdf = _model_preds(route, er, preds)
+        result = {k: v for k, v in _score(args.route, route, er, pdf, pdf, timing).items()
+                  if k != "subsets"}
         if getattr(route, "confidences", None):
             result["mean_confidence"] = round(
                 sum(route.confidences) / len(route.confidences), 3)
