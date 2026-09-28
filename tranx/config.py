@@ -87,8 +87,6 @@ TRANSACTION_TYPE_LABELS = {
 }
 # Source labels that name what was bought (a procedure, service product, activity or
 # fee item) rather than who was paid. Also merchant-less (user ruling 2026-09-27).
-# Unnamed providers and venues stay merchants: Hospital, Lab, Urgent Care,
-# Cardiologist, Pharmacy, Cable Company, Gym, Cinema, Zoo, Bank, Church.
 PURCHASE_ITEM_LABELS = {
     # medical procedures and care types
     "Blood Test", "MRI", "X-Ray", "Surgery", "Dental", "Eye Care", "Physical Therapy",
@@ -107,8 +105,46 @@ PURCHASE_ITEM_LABELS = {
     # generic services
     "Legal", "Service",
 }
+# Source labels that name a kind of place or provider rather than an organization.
+# Merchant-less too (user ruling 2026-09-28, reversing 2026-09-27): a rollup of
+# "Pharmacy" would merge unrelated pharmacies, and on the known list these entries
+# attract new merchants. Named organizations stay merchants (FBI, IRS, DMV, TSA,
+# Marshals, Post Office, Medicare; brands such as Dollar or National).
+GENERIC_PROVIDER_LABELS = {
+    "Ambulance", "Animal Shelter", "Arcade", "Bank", "Bowling Alley", "Brokerage",
+    "Cable Company", "Cardiologist", "Charity", "Chiropractor", "Church", "Cinema",
+    "City Hall", "Clinic", "Community Bank", "Community Center", "Convention Center",
+    "County Clerk", "Court", "Credit Union", "Dermatologist", "Digital Bank", "EMS",
+    "Electric Company", "Emergency Room", "Emergency Services", "Escape Room",
+    "Federal Building", "Financial Advisor", "Fire Department", "Gas Company", "Golf Course",
+    "Government", "Gym", "Gynecologist", "Highway Patrol", "Homeless Shelter", "Hospital",
+    "Internet Provider", "Investment Bank", "Lab", "Local Church", "Local Food Bank",
+    "Mosque", "Municipal Building", "Museum", "NGO", "Neurologist", "Notary", "Online Bank",
+    "Orthopedist", "Paramedic", "Pediatrician", "Pharmacy", "Phone Company",
+    "Police Department", "Psychiatrist", "Religious Organization", "Senior Center",
+    "Sheriff", "Ski Resort", "Specialist", "State Police", "Swimming Pool", "Synagogue",
+    "Temple", "Tennis Court", "Theater", "Theme Park", "Town Hall", "Trampoline Park",
+    "Urgent Care", "Urologist", "Veterans Organization", "Water Company", "Water Park",
+    "Yoga Studio", "Youth Organization", "Zoo",
+}
 # Every label with no merchant; the gold keeps it in the txn_type column.
-NON_MERCHANT_LABELS = TRANSACTION_TYPE_LABELS | PURCHASE_ITEM_LABELS
+NON_MERCHANT_LABELS = TRANSACTION_TYPE_LABELS | PURCHASE_ITEM_LABELS | GENERIC_PROVIDER_LABELS
+
+# Sub-brand label -> (parent, same_line). A predicted parent counts as the right
+# merchant when same_line (same kind of business), or when the row's category is
+# also predicted right (user ruling 2026-09-28). Synthetic same_line follows the
+# source categories; MoneyData has no category labels, so its same_line=False pairs
+# are never credited there.
+PARENT_BRANDS = {
+    # synthetic
+    "Walmart Supercenter": ("Walmart", False), "Walmart Pharmacy": ("Walmart", False),
+    "Safeway Pharmacy": ("Safeway", False), "Amazon Prime": ("Amazon", False),
+    "Nordstrom Rack": ("Nordstrom", True), "Saks Off 5th": ("Saks Fifth Avenue", True),
+    # MoneyData
+    "DoubleTree by Hilton": ("Hilton", True), "Hampton by Hilton": ("Hilton", True),
+    "Holiday Inn Express": ("Holiday Inn", True), "Arriva Trains Wales": ("Arriva", True),
+    "Uber Eats": ("Uber", False),
+}
 # Hard-mode descriptor synthesis: mimic the dirt real card-network descriptors
 # carry (aggregator prefixes, embedded geo/store ids, truncation, uppercasing).
 HARD_PREFIXES = [

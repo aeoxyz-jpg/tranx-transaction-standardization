@@ -123,7 +123,7 @@ def test_cascade_takes_slm_below_threshold_or_on_none():
     d = pl.DataFrame({"choice": ["Acme", NONE_OPTION, "Acme"], "confidence": [0.9, 0.99, 0.4],
                       "slm": ["Slm", "Beta", "Acme"], "gold": ["Acme", "Beta", "Acme"],
                       "gold_in_list": [True, False, True]})
-    by = {r["threshold"]: r for r in tc.sweep(d, lambda p, g: p == g)}
+    by = {r["threshold"]: r for r in tc.sweep(d, lambda p, g, c: p == g)}
     # t=0.5: row 1 accepted (Jev right), row 2 none -> SLM (right), row 3 low -> SLM (right)
     assert by[0.5]["escalated_to_slm"] == round(2 / 3, 3)
     assert by[0.5]["merchant_acc"] == 1.0
@@ -139,7 +139,7 @@ def test_cascade_rows_join_jev_and_slm_preds(run):
         n, _, _ = _expected(split, run)
         assert len(d) == n
         assert set(d["slm"].to_list()) == {"SLM PICK"}
-        res = {r["threshold"]: r for r in tc.sweep(d, lambda p, g: p == g)}
+        res = {r["threshold"]: r for r in tc.sweep(d, lambda p, g, c: p == g)}
         # none_of_these rows and the 0.4-confidence wrong picks go to the SLM at t=0.5
         assert res[0.5]["escalated_to_slm"] == round(1 - d["correct"].mean(), 3)
 

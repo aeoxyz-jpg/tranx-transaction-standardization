@@ -272,3 +272,10 @@ def test_run_scores_one_route_on_the_model_view(fixture_df, tmp_path, monkeypatc
     out = capsys.readouterr().out
     er = eval_rows("random", "model", feed, gold)
     assert f"'rows': {len(er.eval_feed)}" in out and "'view': 'model'" in out
+
+
+def test_brand_family_tokens_keep_standalone_s():
+    from tranx.cli import brand_families
+    f = brand_families(["H&M", "M&S", "Macy's", "Macy's Backstage"])
+    assert f["H&M"] != f["M&S"]
+    assert f["Macy's"] == f["Macy's Backstage"]

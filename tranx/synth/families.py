@@ -1,10 +1,12 @@
 """Brand-family grouping and stable hash assignment shared by the synth and the splits."""
-_STOP = {"the", "of", "and", "s", "for"}
+_STOP = {"the", "of", "and", "for"}
 
 
 def _tokens(name: str) -> frozenset:
     import re
-    return frozenset(t for t in re.findall(r"[a-z0-9]+", name.lower()) if t not in _STOP)
+    # Strip possessive 's first: dropping "s" as a word turned "M&S" into {m}, a subset of H&M.
+    name = re.sub(r"['’]s\b", "", name.lower())
+    return frozenset(t for t in re.findall(r"[a-z0-9]+", name) if t not in _STOP)
 
 
 # Sibling banners whose names share no token subset.

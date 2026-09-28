@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from tranx import config
 from tranx.cli import eval_rows
 from tranx.eval.manifest import ManifestError, file_sha256, load_preds
-from tranx.eval.metrics import _norm_merchant as norm
+from tranx.eval.metrics import _norm_merchant as norm, merchant_ok
 from tranx.routes.jev import _jev_call, JEV_MODEL, NONE_OPTION, parse
 import eval_moneydata as md
 
@@ -64,7 +64,8 @@ def synthetic_rows(manifest: dict, preds_dir: Path | None, data_dir: Path) -> pl
                         "description": r["description"], "gold": gold_m,
                         "choice": choice, "confidence": r["jev_confidence"],
                         "p_choice": r["jev_p_choice"], "p_none": r["jev_p_none"],
-                        "correct": choice != NONE_OPTION and norm(choice or "") == norm(gold_m),
+                        "correct": choice != NONE_OPTION and merchant_ok(
+                            choice, gold_m, r["pred_category"] == r["gold_category"]),
                         "gold_in_list": norm(gold_m) in vocab,
                         "gold_in_cands": norm(gold_m) in {norm(x) for x in (r["candidates"] or [])},
                         "cat_choice": r["pred_category"],

@@ -80,7 +80,10 @@ ALIASES: dict[str, set[str]] = {}
 
 
 def accepted(g: str) -> set[str]:
-    return {norm(g)} | ALIASES.get(g, set())
+    parent = config.PARENT_BRANDS.get(g)
+    # MoneyData has no category labels, so only same-line parents can be credited.
+    same_line = {norm(parent[0])} if parent and parent[1] else set()
+    return {norm(g)} | ALIASES.get(g, set()) | same_line
 
 
 def spend_by_descriptor(raw_csv_path) -> pl.DataFrame:

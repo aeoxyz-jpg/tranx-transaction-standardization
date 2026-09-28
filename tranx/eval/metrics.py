@@ -1,6 +1,7 @@
 import re
 import polars as pl
 from sklearn.metrics import f1_score
+from tranx import config
 from tranx.pipeline.aggregate import rollup_by_merchant
 
 _NON_ALNUM = re.compile(r"[^a-z0-9]")
@@ -9,6 +10,23 @@ _NON_ALNUM = re.compile(r"[^a-z0-9]")
 def _norm_merchant(s: str) -> str:
     """Case-insensitive, punctuation/space-stripped form for fair matching."""
     return _NON_ALNUM.sub("", s.lower())
+
+
+def merchant_ok(pred, gold, category_ok: bool | None = None) -> bool:
+    """The single merchant-correctness rule: normalized match, or the gold's parent
+    brand (config.PARENT_BRANDS) when it is the same line of business or the row's
+    category was also predicted right."""
+    if gold is None:
+        return False
+    p = _norm_merchant(pred or "")
+    if p == _norm_merchant(gold):
+        return True
+    parent = config.PARENT_BRANDS.get(gold)
+    return bool(parent) and p == _norm_merchant(parent[0]) and (parent[1] or bool(category_ok))
+
+
+def _category_ok(pred_cat, gold_cat) -> bool:
+    return pred_cat is not None and pred_cat == gold_cat
 
 
 def _accuracy(pred: pl.DataFrame, gold: pl.DataFrame, col: str) -> float:
@@ -24,14 +42,23 @@ def _accuracy(pred: pl.DataFrame, gold: pl.DataFrame, col: str) -> float:
 def merchant_normalized_match(pred: pl.DataFrame, gold: pl.DataFrame) -> float:
     """Merchant match ignoring case and punctuation — fairer to generative output
     (credits 'PARAMEDIC'=='Paramedic', 'Canes'=="Cane's") than exact string match."""
-    j = pred.select(["txn_id", "canonical_merchant"]).join(
-        gold.select(["txn_id", "canonical_merchant"]), on="txn_id", suffix="_gold")
+    j = _merchant_join(pred, gold)
     j = j.filter(pl.col("canonical_merchant_gold").is_not_null())  # merchant-less rows unscored
-    p = [_norm_merchant(x or "") for x in j["canonical_merchant"].to_list()]
-    g = [_norm_merchant(x) for x in j["canonical_merchant_gold"].to_list()]
-    if not p:
+    if not len(j):
         return 0.0
-    return sum(a == b for a, b in zip(p, g)) / len(p)
+    return sum(_row_ok(r) for r in j.iter_rows(named=True)) / len(j)
+
+
+def _merchant_join(pred: pl.DataFrame, gold: pl.DataFrame, extra: tuple = ()) -> pl.DataFrame:
+    """Predicted and gold merchant (and category, when both frames carry one) per txn."""
+    pc = ["txn_id", "canonical_merchant"] + (["category"] if "category" in pred.columns else [])
+    gc = ["txn_id", "canonical_merchant"] + (["category"] if "category" in gold.columns else []) + list(extra)
+    return pred.select(pc).join(gold.select(gc), on="txn_id", suffix="_gold")
+
+
+def _row_ok(r: dict) -> bool:
+    return merchant_ok(r["canonical_merchant"], r["canonical_merchant_gold"],
+                       _category_ok(r.get("category"), r.get("category_gold")))
 
 
 def category_accuracy(pred: pl.DataFrame, gold: pl.DataFrame) -> float:
@@ -95,17 +122,13 @@ def merchant_subsets(pred: pl.DataFrame, gold: pl.DataFrame) -> dict:
     (recoverable: neither noise fired; abbreviated: noise_abbrev fired; truncated:
     noise_trunc fired — a row can land in both abbreviated and truncated) and by
     origin ("source" / "local"). None where a subset has no rows."""
-    j = pred.select(["txn_id", "canonical_merchant"]).join(
-        gold.select(["txn_id", "canonical_merchant", "noise_abbrev", "noise_trunc", "origin"]),
-        on="txn_id", suffix="_gold")
+    j = _merchant_join(pred, gold, ("noise_abbrev", "noise_trunc", "origin"))
     j = j.filter(pl.col("canonical_merchant_gold").is_not_null())
 
     def _acc(df: pl.DataFrame):
         if not len(df):
             return None
-        p = [_norm_merchant(x or "") for x in df["canonical_merchant"].to_list()]
-        g = [_norm_merchant(x) for x in df["canonical_merchant_gold"].to_list()]
-        return sum(a == b for a, b in zip(p, g)) / len(p)
+        return sum(_row_ok(r) for r in df.iter_rows(named=True)) / len(df)
 
     recoverable = j.filter(~pl.col("noise_abbrev").fill_null(False)
                            & ~pl.col("noise_trunc").fill_null(False))
@@ -148,8 +171,8 @@ def cluster_bootstrap_ci(pred: pl.DataFrame, gold: pl.DataFrame, n_boot: int = 1
            else j.select(pl.coalesce("canonical_merchant", "txn_type"))[:, 0]).fill_null("?")
     cat_ok = (j["p_cat"] == j["category"]).to_numpy().astype(float)
     has_m = j["canonical_merchant"].is_not_null().to_numpy()
-    m_ok = np.array([_norm_merchant(p or "") == _norm_merchant(g or "")
-                     for p, g in zip(j["p_m"], j["canonical_merchant"])], dtype=float)
+    m_ok = np.array([merchant_ok(p, g, _category_ok(pc, gc)) for p, g, pc, gc
+                     in zip(j["p_m"], j["canonical_merchant"], j["p_cat"], j["category"])], dtype=float)
     codes, cluster = np.unique(key.to_numpy(), return_inverse=True)
     k = len(codes)
     rng = np.random.default_rng(seed)

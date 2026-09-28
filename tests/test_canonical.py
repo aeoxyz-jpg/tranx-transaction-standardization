@@ -64,8 +64,10 @@ def test_gold_merchant_rules():
     assert gold_merchant("Frontier", "Transportation") == ("Frontier Airlines", None)
     assert gold_merchant("Frontier", "Utilities & Services") == ("Frontier Communications", None)
     assert gold_merchant("Starbucks", "Food & Dining") == ("Starbucks", None)
-    # purchased items are not merchants; unnamed providers are
+    # purchased items and generic providers are not merchants; named organizations are
     assert gold_merchant("MRI", "Healthcare & Medical") == (None, "MRI")
     assert gold_merchant("Toll", "Transportation") == (None, "Toll")
-    assert gold_merchant("Hospital", "Healthcare & Medical") == ("Hospital", None)
-    assert gold_merchant("Cable Company", "Utilities & Services") == ("Cable Company", None)
+    assert gold_merchant("Hospital", "Healthcare & Medical") == (None, "Hospital")
+    assert gold_merchant("Police Department", "Government & Legal") == (None, "Police Department")
+    assert gold_merchant("Children's Hospital", "Healthcare & Medical") == ("Children's Hospital", None)
+    assert gold_merchant("IRS", "Government & Legal") == ("IRS", None)

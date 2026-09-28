@@ -23,7 +23,7 @@ import polars as pl
 
 from tranx import config
 from tranx.eval.manifest import load_preds
-from tranx.eval.metrics import _norm_merchant as norm
+from tranx.eval.metrics import _norm_merchant as norm, merchant_ok
 from tranx.eval.significance import paired_bootstrap, leave_one_cluster_out
 
 # eval_moneydata.py lives next to this script and is not a package; import it
@@ -64,13 +64,18 @@ def synthetic_merchant(manifest: dict, preds_dir: Path, split: str, route_a: str
         a, b = _load_pair(split, route_a, route_b, manifest, preds_dir)
     except FileNotFoundError as e:
         return {"skipped": f"missing preds: {e}", "label": label}
-    j = a.select(["txn_id", "pred_merchant", "gold_merchant", "origin", "noise_abbrev"]).join(
-        b.select(["txn_id", pl.col("pred_merchant").alias("pred_merchant_b")]), on="txn_id")
+    j = a.select(["txn_id", "pred_merchant", "pred_category", "gold_merchant", "gold_category",
+                  "origin", "noise_abbrev"]).join(
+        b.select(["txn_id", pl.col("pred_merchant").alias("pred_merchant_b"),
+                  pl.col("pred_category").alias("pred_category_b")]), on="txn_id")
     j = j.filter(pl.col("gold_merchant").is_not_null())
     j = j.filter(~(pl.col("origin").eq("local") & pl.col("noise_abbrev").fill_null(False)))
     gold = j["gold_merchant"].to_list()
-    ok_a = np.array([norm(p or "") == norm(g) for p, g in zip(j["pred_merchant"].to_list(), gold)])
-    ok_b = np.array([norm(p or "") == norm(g) for p, g in zip(j["pred_merchant_b"].to_list(), gold)])
+    gc = j["gold_category"].to_list()
+    ok_a = np.array([merchant_ok(p, g, c is not None and c == x) for p, g, c, x
+                     in zip(j["pred_merchant"].to_list(), gold, j["pred_category"].to_list(), gc)])
+    ok_b = np.array([merchant_ok(p, g, c is not None and c == x) for p, g, c, x
+                     in zip(j["pred_merchant_b"].to_list(), gold, j["pred_category_b"].to_list(), gc)])
     res = paired_bootstrap(ok_a, ok_b, np.array(gold), n_boot=config.BOOTSTRAP_N, seed=0)
     res["label"] = label
     return res

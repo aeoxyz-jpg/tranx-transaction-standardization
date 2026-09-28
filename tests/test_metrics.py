@@ -169,3 +169,23 @@ def test_spend_kpi_uses_normalized_names():
     gold = pl.DataFrame({"txn_id": ["a", "b"], "canonical_merchant": ["Starbucks", "Starbucks"]})
     pred = pl.DataFrame({"txn_id": ["a", "b"], "canonical_merchant": ["STARBUCKS", "Starbucks"]})
     assert metrics.merchant_spend_kpi(feed, pred, gold)["within_tolerance"] == 1.0
+
+
+def test_merchant_ok_credits_parent_brand_by_line_of_business():
+    from tranx.eval.metrics import merchant_ok
+    assert merchant_ok("DOUBLETREE BY HILTON", "DoubleTree by Hilton")
+    assert merchant_ok("Hilton", "DoubleTree by Hilton")                 # same line: always
+    assert not merchant_ok("Uber", "Uber Eats")                          # other line, category unknown
+    assert not merchant_ok("Uber", "Uber Eats", category_ok=False)
+    assert merchant_ok("Uber", "Uber Eats", category_ok=True)
+    assert not merchant_ok("DoubleTree by Hilton", "Hilton")             # child for parent is not credited
+    assert not merchant_ok("Hilton", None)
+
+
+def test_normalized_match_uses_row_category_for_parent_credit():
+    from tranx.eval.metrics import merchant_normalized_match
+    gold = pl.DataFrame({"txn_id": ["a", "b"], "canonical_merchant": ["Walmart Pharmacy"] * 2,
+                         "category": ["Healthcare & Medical"] * 2})
+    pred = pl.DataFrame({"txn_id": ["a", "b"], "canonical_merchant": ["Walmart"] * 2,
+                         "category": ["Healthcare & Medical", "Shopping & Retail"]})
+    assert merchant_normalized_match(pred, gold) == 0.5
