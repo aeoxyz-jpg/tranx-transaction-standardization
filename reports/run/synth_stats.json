@@ -1,0 +1,46 @@
+{
+  "rows": 99998,
+  "mode": "hard",
+  "distinct_descriptions": 15917,
+  "distinct_per_row": 0.1592,
+  "all": {
+    "source": {
+      "merchants": 350,
+      "families": 337,
+      "rows": 58455
+    },
+    "local": {
+      "merchants": 799,
+      "families": 783,
+      "rows": 17060
+    }
+  },
+  "random_model_view": {
+    "model_view_n": 1496,
+    "capped_n": 1000,
+    "source": {
+      "merchants": 281,
+      "families": 274,
+      "rows": 588
+    },
+    "local": {
+      "merchants": 151,
+      "families": 151,
+      "rows": 200
+    }
+  },
+  "unseen_model_view": {
+    "model_view_n": 2833,
+    "capped_n": 2000,
+    "source": {
+      "merchants": 67,
+      "families": 66,
+      "rows": 1196
+    },
+    "local": {
+      "merchants": 154,
+      "families": 153,
+      "rows": 555
+    }
+  }
+}

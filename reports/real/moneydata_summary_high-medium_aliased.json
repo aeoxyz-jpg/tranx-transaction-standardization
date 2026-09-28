@@ -4,60 +4,70 @@
     "distinct": 0.177,
     "row_weighted": 0.155,
     "macro_by_merchant": 0.317,
-    "spend_weighted": 0.134
+    "spend_weighted": 0.134,
+    "spend_weighted_excl_top": 0.168
   },
   "fuzzy_known": {
     "distinct": 0.868,
     "row_weighted": 0.824,
     "macro_by_merchant": 0.892,
-    "spend_weighted": 0.723
+    "spend_weighted": 0.723,
+    "spend_weighted_excl_top": 0.906
   },
   "fuzzy_hold": {
     "distinct": 0.596,
     "row_weighted": 0.65,
     "macro_by_merchant": 0.206,
-    "spend_weighted": 0.275
+    "spend_weighted": 0.275,
+    "spend_weighted_excl_top": 0.344
   },
   "embed_known": {
     "distinct": 0.878,
     "row_weighted": 0.822,
     "macro_by_merchant": 0.904,
-    "spend_weighted": 0.719
+    "spend_weighted": 0.719,
+    "spend_weighted_excl_top": 0.901
   },
   "embed_hold": {
     "distinct": 0.554,
     "row_weighted": 0.574,
     "macro_by_merchant": 0.212,
-    "spend_weighted": 0.265
+    "spend_weighted": 0.265,
+    "spend_weighted_excl_top": 0.332
   },
   "slm": {
     "distinct": 0.804,
     "row_weighted": 0.815,
     "macro_by_merchant": 0.677,
-    "spend_weighted": 0.568
+    "spend_weighted": 0.568,
+    "spend_weighted_excl_top": 0.711
   },
   "jev_known": {
     "distinct": 0.958,
     "row_weighted": 0.944,
     "macro_by_merchant": 0.939,
-    "spend_weighted": 0.772
+    "spend_weighted": 0.772,
+    "spend_weighted_excl_top": 0.967
   },
   "jev_hold": {
     "distinct": 0.618,
     "row_weighted": 0.677,
     "macro_by_merchant": 0.215,
-    "spend_weighted": 0.285
+    "spend_weighted": 0.285,
+    "spend_weighted_excl_top": 0.357
   },
   "cascade_embed0.6_to_slm": {
     "distinct": 0.821,
     "row_weighted": 0.847,
     "macro_by_merchant": 0.67,
     "spend_weighted": 0.575,
+    "spend_weighted_excl_top": 0.72,
     "held_subset": {
       "distinct": 0.609,
       "row_weighted": 0.565,
       "macro_by_merchant": 0.609,
-      "spend_weighted": 0.429
+      "spend_weighted": 0.429,
+      "spend_weighted_excl_top": 0.603
     },
     "escalated_descriptor_share": 0.481,
     "held_wrongly_accepted": 0.059
@@ -67,11 +77,13 @@
     "row_weighted": 0.843,
     "macro_by_merchant": 0.686,
     "spend_weighted": 0.576,
+    "spend_weighted_excl_top": 0.721,
     "held_subset": {
       "distinct": 0.639,
       "row_weighted": 0.571,
       "macro_by_merchant": 0.639,
-      "spend_weighted": 0.432
+      "spend_weighted": 0.432,
+      "spend_weighted_excl_top": 0.608
     },
     "escalated_descriptor_share": 0.673,
     "held_wrongly_accepted": 0.015
@@ -81,11 +93,13 @@
     "row_weighted": 0.83,
     "macro_by_merchant": 0.686,
     "spend_weighted": 0.571,
+    "spend_weighted_excl_top": 0.715,
     "held_subset": {
       "distinct": 0.653,
       "row_weighted": 0.581,
       "macro_by_merchant": 0.653,
-      "spend_weighted": 0.435
+      "spend_weighted": 0.435,
+      "spend_weighted_excl_top": 0.613
     },
     "escalated_descriptor_share": 0.89,
     "held_wrongly_accepted": 0.0
@@ -95,11 +109,13 @@
     "row_weighted": 0.823,
     "macro_by_merchant": 0.681,
     "spend_weighted": 0.569,
+    "spend_weighted_excl_top": 0.713,
     "held_subset": {
       "distinct": 0.653,
       "row_weighted": 0.581,
       "macro_by_merchant": 0.653,
-      "spend_weighted": 0.435
+      "spend_weighted": 0.435,
+      "spend_weighted_excl_top": 0.613
     },
     "escalated_descriptor_share": 0.96,
     "held_wrongly_accepted": 0.0
@@ -109,11 +125,13 @@
     "row_weighted": 0.858,
     "macro_by_merchant": 0.696,
     "spend_weighted": 0.586,
+    "spend_weighted_excl_top": 0.734,
     "held_subset": {
       "distinct": 0.619,
       "row_weighted": 0.574,
       "macro_by_merchant": 0.619,
-      "spend_weighted": 0.432
+      "spend_weighted": 0.432,
+      "spend_weighted_excl_top": 0.608
     },
     "escalated_descriptor_share": 0.364
   },
@@ -126,25 +144,29 @@
       "distinct": 0.361,
       "row_weighted": 0.322,
       "macro_by_merchant": 0.361,
-      "spend_weighted": 0.059
+      "spend_weighted": 0.059,
+      "spend_weighted_excl_top": 0.084
     },
     "slm": {
       "distinct": 0.653,
       "row_weighted": 0.581,
       "macro_by_merchant": 0.653,
-      "spend_weighted": 0.435
+      "spend_weighted": 0.435,
+      "spend_weighted_excl_top": 0.613
     },
     "embed_hold": {
       "distinct": 0.0,
       "row_weighted": 0.0,
       "macro_by_merchant": 0.0,
-      "spend_weighted": 0.0
+      "spend_weighted": 0.0,
+      "spend_weighted_excl_top": 0.0
     },
     "fuzzy_hold": {
       "distinct": 0.0,
       "row_weighted": 0.0,
       "macro_by_merchant": 0.0,
-      "spend_weighted": 0.0
+      "spend_weighted": 0.0,
+      "spend_weighted_excl_top": 0.0
     }
   },
   "non_literal": {

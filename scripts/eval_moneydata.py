@@ -110,6 +110,12 @@ def score(pred, gold, n, spend=None):
     if spend is not None:
         spend = np.asarray(spend, dtype=float)
         out["spend_weighted"] = round(float((ok * spend).sum() / spend.sum()), 3) if spend.sum() else None
+        # One descriptor can dominate spend (an investment-platform transfer is ~20% of
+        # MoneyData's debits), so also report the score without the largest one.
+        if len(spend) > 1:
+            keep = np.arange(len(spend)) != int(np.argmax(spend))
+            rest = spend[keep].sum()
+            out["spend_weighted_excl_top"] = round(float((ok[keep] * spend[keep]).sum() / rest), 3) if rest else None
     return out
 
 

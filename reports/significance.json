@@ -1,0 +1,94 @@
+{
+  "exploratory": {
+    "ddt_category": {
+      "comparison": "embedding - jev, category, DoDataThings",
+      "diff": 0.096,
+      "hi": 0.126,
+      "label": "exploratory",
+      "lo": 0.066975,
+      "n_clusters": 1000,
+      "n_rows": 1000
+    },
+    "moneydata_known": {
+      "comparison": "jev - embedding, merchant, MoneyData full list",
+      "diff": 0.08043875685557587,
+      "hi": 0.12645391586867305,
+      "label": "exploratory",
+      "lo": 0.013549219951658977,
+      "n_clusters": 261,
+      "n_rows": 547
+    },
+    "synthetic_random_category": {
+      "comparison": "embedding - jev_merchant, category, synthetic random",
+      "diff": -0.008689839572192513,
+      "hi": 0.021462662694919518,
+      "label": "exploratory",
+      "lo": -0.038304406543900306,
+      "n_clusters": 619,
+      "n_rows": 1496
+    },
+    "synthetic_random_merchant": {
+      "comparison": "jev_merchant - embedding, merchant, synthetic random",
+      "diff": 0.09043020193151888,
+      "hi": 0.11331025673063012,
+      "label": "exploratory",
+      "lo": 0.06902969370320117,
+      "n_clusters": 501,
+      "n_rows": 1139
+    },
+    "synthetic_unseen_category": {
+      "comparison": "embedding - jev_merchant, category, synthetic unseen",
+      "diff": -0.2806212495587716,
+      "hi": -0.21696707910847016,
+      "label": "exploratory",
+      "lo": -0.34421342779126374,
+      "n_clusters": 334,
+      "n_rows": 2833
+    },
+    "synthetic_unseen_merchant": {
+      "comparison": "jev_merchant - embedding, merchant, synthetic unseen",
+      "diff": 0.2009267059814659,
+      "hi": 0.22012107182940518,
+      "label": "exploratory",
+      "lo": 0.18301917124439065,
+      "n_clusters": 231,
+      "n_rows": 2374
+    }
+  },
+  "notes": {
+    "ci_interpretation": "These CIs describe a hypothetical population of merchants like these (the same generator, or the same one person's statements); they are not a claim about other customers.",
+    "moneydata_filter": "168 low-confidence labels excluded (kept confidence: high, medium)"
+  },
+  "primary": {
+    "moneydata": {
+      "comparison": "jev_slm - slm, merchant, MoneyData realistic list",
+      "diff": 0.043875685557586835,
+      "hi": 0.09383733324719791,
+      "label": "primary",
+      "lo": 0.013616047954569357,
+      "lomo_range": {
+        "hi": 0.06282722513089005,
+        "lo": 0.03683241252302026
+      },
+      "n_clusters": 261,
+      "n_rows": 547,
+      "row_weighted_ci_without_amazon": {
+        "diff": 0.0651986183074266,
+        "hi": 0.12976096901580372,
+        "lo": 0.01799762757385855,
+        "n_clusters": 260,
+        "n_rows": 382
+      },
+      "row_weighted_point_with_amazon": 0.042885543879579664
+    },
+    "synthetic_unseen": {
+      "comparison": "jev_slm - slm_fewshot, merchant, synthetic unseen",
+      "diff": -0.040859309182813816,
+      "hi": -0.01655447201804817,
+      "label": "primary",
+      "lo": -0.07136958889121088,
+      "n_clusters": 231,
+      "n_rows": 2374
+    }
+  }
+}

@@ -221,7 +221,8 @@ def fig_significance(significance: dict, out_dir: Path):
                    color=color, ecolor=color, capsize=4, markersize=7)
     ax.axvline(0, color="black", linewidth=0.8, linestyle="-")
     ax.set_yticks(y)
-    ax.set_yticklabels([f"{key} ({section})" for key, section, _ in rows])
+    ax.set_yticklabels([f"{e.get('comparison', key)}" + (" [primary]" if section == "primary" else "")
+                        for key, section, e in rows])
     ax.set_xlabel("paired accuracy difference (route A - route B)")
     title = "Paired significance: primary comparisons in blue, exploratory in gray"
     if skipped:
@@ -234,34 +235,44 @@ def fig_significance(significance: dict, out_dir: Path):
     print("wrote", out_dir / "significance.png")
 
 
+# MoneyData methods shown, with display names (the summary also holds cascade variants).
+MONEYDATA_METHODS = {
+    "derive": "cleaner", "fuzzy_known": "fuzzy (full list)", "embed_known": "embedding (full list)",
+    "jev_known": "Jev (full list)", "slm": "SLM", "cascade_jevnone_to_slm": "Jev -> SLM (realistic list)",
+}
+
+
 def fig_moneydata(summary: dict, out_dir: Path):
     """MoneyData merchant accuracy per method: per-descriptor (distinct) vs
     spend-weighted. Only methods carrying both numbers are plotted."""
-    methods, distinct, spend = [], [], []
-    for key, entry in summary.items():
+    methods, distinct, spend, spend_x = [], [], [], []
+    for key in MONEYDATA_METHODS:
+        entry = summary.get(key)
         if not isinstance(entry, dict):
             continue
         d, s = entry.get("distinct"), entry.get("spend_weighted")
         if isinstance(d, (int, float)) and isinstance(s, (int, float)):
-            methods.append(key)
+            methods.append(MONEYDATA_METHODS[key])
             distinct.append(d)
             spend.append(s)
+            spend_x.append(entry.get("spend_weighted_excl_top") or 0.0)
     if not methods:
         print("make_figures: no MoneyData distinct/spend_weighted pairs, skipping moneydata.png")
         return
     fig, ax = plt.subplots(figsize=(max(9, 0.7 * len(methods)), 5))
     x = range(len(methods))
-    w = 0.38
-    b1 = ax.bar([p - w / 2 for p in x], distinct, width=w, label="per descriptor",
+    w = 0.27
+    b1 = ax.bar([p - w for p in x], distinct, width=w, label="per descriptor",
                color="#4C72B0")
-    b2 = ax.bar([p + w / 2 for p in x], spend, width=w, label="spend-weighted",
-               color="#DD8452")
-    for bars in (b1, b2):
+    b2 = ax.bar(list(x), spend, width=w, label="spend-weighted", color="#DD8452")
+    b3 = ax.bar([p + w for p in x], spend_x, width=w,
+               label="spend-weighted, largest descriptor removed", color="#55A868")
+    for bars in (b1, b2, b3):
         for b in bars:
             ax.text(b.get_x() + b.get_width() / 2, b.get_height() + 0.01,
                     f"{b.get_height():.2f}", ha="center", va="bottom", fontsize=8)
     ax.set_xticks(list(x))
-    ax.set_xticklabels(methods, rotation=30, ha="right")
+    ax.set_xticklabels(methods, rotation=20, ha="right")
     ax.set_ylim(0, 1.05)
     ax.set_ylabel("merchant accuracy")
     ax.set_title("MoneyData merchant accuracy — per descriptor vs spend-weighted")

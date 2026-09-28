@@ -1,12 +1,12 @@
 flowchart TD
     Q1{"Do you have labelled<br/>training rows?"}
     Q1 -->|yes| Q2{"Are the merchants<br/>mostly familiar?"}
-    Q1 -->|no| JEV["<b>Jev category choice</b><br/>zero-shot, description only<br/>synthetic unseen 0.88<br/>independent dataset 0.81"]
-    Q2 -->|yes| EMB["<b>Embedding + logistic regression</b><br/>synthetic random 0.94<br/>independent dataset 0.90"]
+    Q1 -->|no| JEV["<b>Jev category choice</b><br/>zero-shot, description only<br/>synthetic unseen 0.83<br/>DoDataThings 0.81"]
+    Q2 -->|yes| EMB["<b>Embedding + logistic regression</b><br/>DoDataThings 0.90 (Jev 0.81)<br/>synthetic cache misses 0.79 (Jev 0.80, a tie)"]
     Q2 -->|"no, new brands"| JEV
     subgraph REF["For reference"]
-        BASE["Guessing from type code, MCC and<br/>amount alone (no description): 0.68"]
-        SLMN["SLM few-shot: 0.76 to 0.79 synthetic,<br/>0.62 independent dataset"]
+        BASE["Type code, MCC and amount only<br/>(no description): 0.69 to 0.70"]
+        SLMN["SLM few-shot: 0.71 to 0.74 synthetic,<br/>0.62 DoDataThings"]
     end
     JEV ~~~ REF
     EMB ~~~ REF

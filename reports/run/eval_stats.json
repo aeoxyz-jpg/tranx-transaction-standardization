@@ -1,0 +1,236 @@
+{
+  "random": {
+    "model": {
+      "n_eval": 20000,
+      "removed_verbatim": 18359,
+      "cache_hit_rate": 0.917,
+      "conflicts": {
+        "descriptors": 3,
+        "rows": 77,
+        "eval_rows": 20
+      },
+      "model_view_n": 1496,
+      "capped_n": 1496,
+      "view_n": 1496,
+      "composition": {
+        "before": {
+          "rows": 20000,
+          "merchants": 994,
+          "category": {
+            "Charity & Donations": 1985,
+            "Entertainment & Recreation": 2027,
+            "Financial Services": 1966,
+            "Food & Dining": 2010,
+            "Government & Legal": 2049,
+            "Healthcare & Medical": 1980,
+            "Income": 1966,
+            "Shopping & Retail": 2018,
+            "Transportation": 2002,
+            "Utilities & Services": 1997
+          },
+          "origin": {
+            "local": 3433,
+            "none": 4866,
+            "source": 11701
+          }
+        },
+        "after": {
+          "rows": 1496,
+          "merchants": 519,
+          "category": {
+            "Charity & Donations": 148,
+            "Entertainment & Recreation": 175,
+            "Financial Services": 118,
+            "Food & Dining": 161,
+            "Government & Legal": 148,
+            "Healthcare & Medical": 145,
+            "Income": 139,
+            "Shopping & Retail": 155,
+            "Transportation": 152,
+            "Utilities & Services": 155
+          },
+          "origin": {
+            "local": 291,
+            "none": 324,
+            "source": 881
+          }
+        }
+      }
+    },
+    "ideal_cache": {
+      "n_eval": 20000,
+      "removed_verbatim": 18359,
+      "cache_hit_rate": 0.917,
+      "conflicts": {
+        "descriptors": 3,
+        "rows": 77,
+        "eval_rows": 20
+      },
+      "model_view_n": 1496,
+      "capped_n": 1496,
+      "view_n": 19980,
+      "ideal_hit_rows": 18339,
+      "composition": {
+        "before": {
+          "rows": 20000,
+          "merchants": 994,
+          "category": {
+            "Charity & Donations": 1985,
+            "Entertainment & Recreation": 2027,
+            "Financial Services": 1966,
+            "Food & Dining": 2010,
+            "Government & Legal": 2049,
+            "Healthcare & Medical": 1980,
+            "Income": 1966,
+            "Shopping & Retail": 2018,
+            "Transportation": 2002,
+            "Utilities & Services": 1997
+          },
+          "origin": {
+            "local": 3433,
+            "none": 4866,
+            "source": 11701
+          }
+        },
+        "after": {
+          "rows": 19980,
+          "merchants": 994,
+          "category": {
+            "Charity & Donations": 1982,
+            "Entertainment & Recreation": 2027,
+            "Financial Services": 1966,
+            "Food & Dining": 2010,
+            "Government & Legal": 2049,
+            "Healthcare & Medical": 1980,
+            "Income": 1966,
+            "Shopping & Retail": 2018,
+            "Transportation": 1986,
+            "Utilities & Services": 1996
+          },
+          "origin": {
+            "local": 3430,
+            "none": 4866,
+            "source": 11684
+          }
+        }
+      }
+    }
+  },
+  "unseen": {
+    "model": {
+      "n_eval": 19979,
+      "removed_verbatim": 4576,
+      "cache_hit_rate": 0.2289,
+      "conflicts": {
+        "descriptors": 3,
+        "rows": 77,
+        "eval_rows": 2
+      },
+      "model_view_n": 2833,
+      "capped_n": 2833,
+      "view_n": 2833,
+      "composition": {
+        "before": {
+          "rows": 19979,
+          "merchants": 234,
+          "category": {
+            "Charity & Donations": 1682,
+            "Entertainment & Recreation": 2020,
+            "Financial Services": 2099,
+            "Food & Dining": 2335,
+            "Government & Legal": 1364,
+            "Healthcare & Medical": 2528,
+            "Income": 1975,
+            "Shopping & Retail": 2490,
+            "Transportation": 2090,
+            "Utilities & Services": 1396
+          },
+          "origin": {
+            "local": 3861,
+            "none": 4958,
+            "source": 11160
+          }
+        },
+        "after": {
+          "rows": 2833,
+          "merchants": 234,
+          "category": {
+            "Charity & Donations": 275,
+            "Entertainment & Recreation": 294,
+            "Financial Services": 247,
+            "Food & Dining": 410,
+            "Government & Legal": 220,
+            "Healthcare & Medical": 363,
+            "Income": 138,
+            "Shopping & Retail": 384,
+            "Transportation": 323,
+            "Utilities & Services": 179
+          },
+          "origin": {
+            "local": 787,
+            "none": 352,
+            "source": 1694
+          }
+        }
+      }
+    },
+    "ideal_cache": {
+      "n_eval": 19979,
+      "removed_verbatim": 4576,
+      "cache_hit_rate": 0.2289,
+      "conflicts": {
+        "descriptors": 3,
+        "rows": 77,
+        "eval_rows": 2
+      },
+      "model_view_n": 2833,
+      "capped_n": 2833,
+      "view_n": 19977,
+      "ideal_hit_rows": 4574,
+      "composition": {
+        "before": {
+          "rows": 19979,
+          "merchants": 234,
+          "category": {
+            "Charity & Donations": 1682,
+            "Entertainment & Recreation": 2020,
+            "Financial Services": 2099,
+            "Food & Dining": 2335,
+            "Government & Legal": 1364,
+            "Healthcare & Medical": 2528,
+            "Income": 1975,
+            "Shopping & Retail": 2490,
+            "Transportation": 2090,
+            "Utilities & Services": 1396
+          },
+          "origin": {
+            "local": 3861,
+            "none": 4958,
+            "source": 11160
+          }
+        },
+        "after": {
+          "rows": 19977,
+          "merchants": 234,
+          "category": {
+            "Charity & Donations": 1680,
+            "Entertainment & Recreation": 2020,
+            "Financial Services": 2099,
+            "Food & Dining": 2335,
+            "Government & Legal": 1364,
+            "Healthcare & Medical": 2528,
+            "Income": 1975,
+            "Shopping & Retail": 2490,
+            "Transportation": 2090,
+            "Utilities & Services": 1396
+          },
+          "origin": {
+            "local": 3859,
+            "none": 4958,
+            "source": 11160
+          }
+        }
+      }
+    }
+  }
+}

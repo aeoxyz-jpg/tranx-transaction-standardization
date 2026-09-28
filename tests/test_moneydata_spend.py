@@ -75,3 +75,11 @@ def test_running_new_flags_toy_sequence():
     seq = ["A", "B", "A", "C", "B", "B"]
     flags = running_new_flags(seq)
     assert flags == [True, True, False, True, False, False]
+
+
+def test_score_spend_weighted_excl_top_drops_largest_descriptor():
+    import numpy as np
+    from eval_moneydata import score
+    out = score(["A", "x", "C"], ["A", "B", "C"], np.array([1, 1, 1]), spend=[10.0, 80.0, 10.0])
+    assert out["spend_weighted"] == 0.2
+    assert out["spend_weighted_excl_top"] == 1.0

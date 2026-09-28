@@ -1,5 +1,7 @@
 flowchart LR
-    D["Transaction<br/>description"] --> F["Fuzzy retrieval:<br/>top-20 known merchants"]
+    D["Transaction<br/>description"] --> C{"Descriptor<br/>in cache?"}
+    C -->|yes| OUT0["Merchant = stored value"]
+    C -->|no| F["Fuzzy retrieval:<br/>top-20 known merchants"]
     F --> J{"Jev Choice:<br/>one of the 20,<br/>or none_of_these"}
     J -->|"picked a merchant"| OUT1["Merchant = Jev's pick"]
     J -->|none_of_these| S["SLM few-shot<br/>writes the merchant"]

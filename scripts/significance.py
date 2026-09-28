@@ -162,6 +162,19 @@ def ddt_section(ddt_path: Path) -> dict:
     return res
 
 
+# Human-readable "A - B, metric, data" for each entry (figures and README use it).
+COMPARISONS = {
+    "synthetic_unseen": "jev_slm - slm_fewshot, merchant, synthetic unseen",
+    "moneydata": "jev_slm - slm, merchant, MoneyData realistic list",
+    "synthetic_random_merchant": "jev_merchant - embedding, merchant, synthetic random",
+    "synthetic_unseen_merchant": "jev_merchant - embedding, merchant, synthetic unseen",
+    "synthetic_random_category": "embedding - jev_merchant, category, synthetic random",
+    "synthetic_unseen_category": "embedding - jev_merchant, category, synthetic unseen",
+    "moneydata_known": "jev - embedding, merchant, MoneyData full list",
+    "ddt_category": "embedding - jev, category, DoDataThings",
+}
+
+
 def build_report(manifest_path: Path, preds_dir: Path,
                  moneydata_preds_path: Path = MONEYDATA_PREDS,
                  aliases_path: Path = MONEYDATA_ALIASES,
@@ -188,6 +201,9 @@ def build_report(manifest_path: Path, preds_dir: Path,
     exploratory.update(md_exploratory)
     exploratory["ddt_category"] = ddt_section(ddt_path)
 
+    for section in (primary, exploratory):
+        for key, entry in section.items():
+            entry["comparison"] = COMPARISONS[key]
     return {"primary": primary, "exploratory": exploratory,
            "notes": {"moneydata_filter": filter_note, "ci_interpretation": CI_NOTE}}
 
@@ -204,7 +220,7 @@ def _table(entries: dict) -> str:
         if "skipped" in r:
             rows.append(f"| {name} | _skipped: {r['skipped']}_ | | | | |")
             continue
-        rows.append(f"| {name} | {_fmt(r['diff'])} | {_fmt(r['lo'])} | {_fmt(r['hi'])} "
+        rows.append(f"| {r.get('comparison', name)} | {_fmt(r['diff'])} | {_fmt(r['lo'])} | {_fmt(r['hi'])} "
                     f"| {r['n_clusters']} | {r['n_rows']} |")
     return "\n".join(rows)
 
