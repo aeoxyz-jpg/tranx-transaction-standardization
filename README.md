@@ -10,6 +10,138 @@ embeddings, a local small language model (SLM) prompted few-shot, and TypeSafe's
 Jev model. Two baselines anchor them: string cleaning alone, and a category guess from
 metadata alone.
 
+## How each method works
+
+Every method receives one transaction: the bank's description string plus metadata
+(amount, a type code, sometimes an MCC merchant category code). Direction (money in or
+out) is the sign of the amount for all of them. What differs is which inputs each method
+reads, what it is given from upstream, and what it can return.
+
+**Shared upstream steps** (`tranx/pipeline/clean.py`, `tranx/synth/canonical.py`):
+
+- *Prefix strip*: remove a leading payment-processor wrapper (`SQ *`, `TST*`, `PP*`,
+  `PAYPAL *`, `SP *`, `POS DEBIT`, `PURCHASE`, `ACH`) so the real merchant is at the front.
+- *Cleaning* (`derive_canonical`): drop store and transaction ids (`#4521`), countries,
+  time phrases and location words (Store, Mall, Airport), and extra spaces. City and
+  state tokens (`ATLANTA GA`) stay; the fuzzy matchers below tolerate them. It cannot undo
+  abbreviation (`BLUE HRN BKRY`), truncation or run-together words.
+- *Known merchant list*: the merchant names that appear in the labelled training rows.
+  The list-bound methods can only return a name from it.
+- In the recommended design an exact-descriptor cache sits in front of all of this; the
+  harness scores the methods only on descriptors the cache has not seen.
+
+| Method | Reads | Upstream it relies on | Returns | Main limit |
+|---|---|---|---|---|
+| `cleaner` (baseline) | description | prefix strip, cleaning | the cleaned text as the merchant; no category | text is not a canonical name |
+| `metadata` (baseline) | type code, MCC, amount | labelled rows | category only | no description, no merchant |
+| `rules` | description, MCC | cleaning, known list, labelled rows | best fuzzy match or the cleaned text; category from MCC or merchant priors | new merchants fall back to the cleaned text |
+| `embedding` | description | cleaning, known list, labelled rows | nearest known name; category from a trained classifier | cannot say "not on the list"; category fails on new brands |
+| `slm_fewshot` | description | prefix strip | a merchant name it writes itself; a category | relies on what the model already knows; slow |
+| `jev_merchant` | description | prefix strip, cleaning, known list (top 20) | one of the 20 candidates or "none of these"; a category | names only listed merchants; hosted API |
+| `jev_slm` | description | all of the above | Jev's pick, else the SLM's name; Jev's category | inherits both sets of limits |
+
+### `cleaner` (baseline)
+
+- **Input:** the description.
+- **How:** prefix strip, then cleaning; the result is the merchant. No category.
+- **Why it is here:** it is the floor. Any merchant score at or near it (0.17 random, 0.21
+  unseen on the synthetic model view) means the method added nothing beyond string cleanup.
+
+### `metadata` (baseline)
+
+- **Input:** type code, MCC (or "none" when absent) and amount. It never reads the
+  description.
+- **How:** one-hot type code and MCC plus log amount, into a logistic regression trained
+  on the labelled rows (`tranx/routes/metadata.py`).
+- **Output:** category only.
+- **Limits:** needs labelled data. In the synthetic feed 60% of merchant rows carry an
+  MCC and 85% of those point to the right category (`MCC_COVERAGE`, `MCC_NOISE` in
+  `tranx/config.py`), which is cleaner than real MCCs, so its 0.69-0.70 is optimistic.
+
+### `rules`
+
+- **Input:** the description and the MCC.
+- **Merchant:** prefix strip and cleaning, then rapidfuzz `token_set_ratio` against the
+  cleaned known names. A match scoring 85 or more returns that known name; otherwise the
+  cleaned text (`no_match_rate` in the leaderboard counts these).
+- **Category:** the most common category for that MCC in the training rows; without an
+  MCC, the most common category for the matched merchant; otherwise the most common
+  category overall.
+- **Limits:** a new merchant always falls back to the cleaned text (95% no-match on the
+  unseen split), and category needs an MCC or a known merchant.
+
+### `embedding`
+
+- **Input:** the description.
+- **Merchant:** the cleaned text and every known name are embedded with MiniLM
+  (`all-MiniLM-L6-v2`); the known name with the highest cosine similarity is returned.
+  It always returns some known name.
+- **Category:** the raw description is embedded and passed to a logistic regression
+  trained on the labelled rows.
+- **Limits:** it cannot answer "not on the list", so new merchants score 0, and its
+  similarity is a weak signal for "new": on MoneyData a 0.7 threshold sends 67% of
+  descriptors onward to catch the new ones. The category classifier learns the brands it
+  was trained on; on new brands it drops to 0.55, below the metadata baseline.
+- **Speed:** about 6.5 ms per transaction on a laptop CPU, no network.
+
+### `slm_fewshot`
+
+- **Input:** the description after the prefix strip.
+- **How:** a prompt with instructions, the allowed category names and five worked examples
+  (`SQ *CANES 47486` becomes Raising Cane's), sent to Qwen2.5-3B-Instruct through a local
+  Ollama server at temperature 0. The model replies with JSON: `canonical_merchant` and
+  `category` (`tranx/routes/slm_fewshot.py`).
+- **Fallbacks:** an unparseable reply gives the cleaned text as the merchant; a category
+  not on the list becomes the most common training category.
+- **Output:** a merchant name it writes itself, so it can name merchants that are on no
+  list.
+- **Limits:** it works from what the model already knows: 0.82 on national brands, 0.52
+  on fictional local names, 0.17 when the name is abbreviated. Its spelling of a name can
+  differ from the canonical one (0.48 exact vs 0.76 after normalizing case and
+  punctuation, unseen split). About 500 ms per transaction locally; 31 of 1000
+  DoDataThings rows got an invalid category.
+
+### `jev_merchant` (TypeSafe Jev)
+
+Jev is TypeSafe's hosted "System One" model. It answers typed questions about a state
+object: here, Choice questions over named options. For each question it returns the chosen
+option, a probability per option and a confidence score. It never writes free text.
+
+- **Input:** only the description after the prefix strip. Amount, type code and MCC are
+  withheld, because in the synthetic feed they are generated from the category and would
+  hand Jev part of the answer.
+- **Upstream:** fuzzy retrieval (`token_set_ratio` on cleaned text) picks the 20 known
+  merchants closest to the description.
+- **Request** (`tranx/routes/jev.py`, one API call per transaction), two questions:
+  - *category*: choose one of the category names;
+  - *merchant*: choose one of the 20 candidates, or `none_of_these` ("None of the listed
+    merchants is the one in the description").
+- **Output:** merchant = Jev's pick; on `none_of_these`, the cleaned text. Category = Jev's
+  pick.
+- **Limits:**
+  - It can only name a merchant that retrieval put in the 20 (the right one is there for
+    96% of known-merchant cache misses).
+  - On new merchants it answered `none_of_these` for 93.5% but picked a known name for
+    6.5%. On the synthetic feed those picks are mostly generic or public-sector entries
+    (Pharmacy, Police Department, Marshals) or a similar-sounding local name, at middling
+    confidence (median 0.64). On MoneyData they are sub-brands filed under a parent
+    (DoubleTree by Hilton to Hilton, Uber Eats to Uber) at 0.97 to 0.99. A clean,
+    brand-only list matters more than a confidence threshold.
+  - Each transaction is a network call (about 320 ms serially, 638 input tokens) and the
+    description leaves the bank.
+
+### `jev_slm` (the cascade)
+
+- **How:** exactly `jev_merchant`, except that a `none_of_these` answer sends the
+  description to `slm_fewshot`, whose merchant name is used. The category stays Jev's.
+- **Limits:** Jev's wrong picks never reach the SLM, and the SLM's own limits
+  apply to everything that does. Whether the combination beats the SLM alone depends on
+  the data (see Results in brief).
+
+On the real datasets the same methods run through `scripts/eval_moneydata.py` (merchant
+only; MoneyData has no category labels) and `scripts/eval_ddt.py` (category only;
+DoDataThings has no merchant labels).
+
 ## Results in brief
 
 - **Most transactions need no model.** A bank sees the same descriptor again and again.
@@ -30,8 +162,8 @@ metadata alone.
   is the pre-set primary comparison, and it points in opposite directions on the two
   datasets. On real statements the cascade beats the SLM alone (+0.044, 95% CI +0.014 to
   +0.094). On synthetic new merchants it loses (-0.041, CI -0.071 to -0.017), because Jev
-  files 6.5% of new merchants under a known one with high confidence. The cascade is worth
-  it only with a clean brand-only list.
+  files 6.5% of new merchants under a known name, mostly generic entries such as
+  "Pharmacy". The cascade is worth it only with a clean brand-only list.
 
 Every number below comes from a file in `reports/`, produced by one run whose inputs are
 pinned in `reports/run/` (see [Reproducing](#reproducing)).
@@ -88,24 +220,6 @@ harness separates two views (`tranx/cli.py`, `eval_rows`):
 - **Ideal-cache view:** all eval rows; hits take the stored train label, misses take the
   route's prediction. It is an upper bound for a cache (a real cache stores predictions,
   which can be wrong) and carries the spend rollup KPI.
-
-## Routes
-
-| Route | Merchant | Category | Needs | ms/txn |
-|---|---|---|---|---|
-| `cleaner` | the description with processor prefixes, store numbers and locations stripped (baseline) | none | nothing | 0.01 |
-| `metadata` | none | logistic regression on type code, MCC and amount; never reads the description (baseline) | labelled rows | 0.1 |
-| `rules` | rapidfuzz match against the training merchant list; falls back to the cleaned text | MCC and merchant priors learned from training data | labelled rows | 0.3 |
-| `embedding` | nearest merchant name by MiniLM cosine similarity | logistic regression on description embeddings | merchant list; labelled rows for category | 6.5 |
-| `slm_fewshot` | Qwen2.5-3B (Ollama) reads the description and writes the merchant | same prompt | nothing trained; runs locally | 500-520 |
-| `jev_merchant` | Jev chooses among the fuzzy top-20 known merchants or `none_of_these` (then the cleaned text) | Jev chooses one of the categories | merchant list; `TYPESAFE_API_KEY` | 320-330 |
-| `jev_slm` | as `jev_merchant`, but `none_of_these` goes to the SLM | Jev | both | 410-780 |
-
-Jev is TypeSafe's hosted "System One" model: it answers typed questions (here a Choice
-over named options) with a probability per option and a confidence score, and never
-writes free text. `rules` and `metadata` see the MCC; the other routes see the description
-only. Latency is serial, one request at a time, on an Apple Silicon laptop; Jev's figure is
-mostly the network round trip.
 
 ## Results
 
@@ -174,16 +288,25 @@ merchant.
 ### Jev as a gate for new merchants
 
 On the unseen split no gold merchant is on the list. Jev answered `none_of_these` for
-93.5% of those rows and picked a known merchant for the other 6.5%, confidently
-(`reports/jev_confidence_summary.json`). Where the gold is on the list, confidence
-separates right from wrong picks well: the probability that a right pick has higher
-confidence than a wrong one (AUROC) is 0.98 on the synthetic random split and 0.93 to 1.00
-on MoneyData. A confidence threshold trades one error for the other
-(`reports/jev_threshold_cascade.json`). This table combines the `jev_merchant` route's
-picks with the `slm_fewshot` route's answers rather than rerunning `jev_slm`, and keeps
-abbreviated local rows, so its unseen numbers sit below the leaderboard's. Its MoneyData
-row uses a separately saved set of Jev answers that differs from the main MoneyData
-predictions on 2 of 547 descriptors (0.850 here, 0.848 in the table below).
+93.5% of those rows and picked a known merchant for the other 6.5%, with a median
+confidence of 0.64 (`reports/jev_confidence_summary.json`; the picks themselves are in the
+local `reports/real/jev_confidence_rows.parquet`). Most are generic or public-sector
+entries on the list (Pharmacy, Police Department, Marshals).
+
+Where the gold is on the list, confidence separates right from wrong picks well: the
+probability that a right pick has higher confidence than a wrong one (AUROC) is 0.98 on
+the synthetic random split and 0.93 to 1.00 on MoneyData. The two datasets fail
+differently, so a confidence threshold helps on one and not the other
+(`reports/jev_threshold_cascade.json`): on the synthetic feed the wrong picks sit at middling
+confidence and a 0.95 threshold recovers most of the loss on new merchants, at a cost on
+known ones; on MoneyData the wrong picks are sub-brands filed under a parent at 0.97 to
+0.99, and the threshold only lowers accuracy.
+
+This table combines the `jev_merchant` route's picks with the `slm_fewshot` route's answers
+rather than rerunning `jev_slm`, and keeps abbreviated local rows, so its unseen numbers sit
+below the leaderboard's. Its MoneyData row uses a separately saved set of Jev answers that
+differs from the main MoneyData predictions on 2 of 547 descriptors (0.850 here, 0.848 in
+the table below).
 
 | Merchant accuracy of the Jev to SLM cascade | no threshold | threshold 0.95 | SLM only |
 |---|---|---|---|
