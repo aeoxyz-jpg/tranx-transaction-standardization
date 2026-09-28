@@ -70,7 +70,8 @@ def synthetic_rows(manifest: dict, preds_dir: Path | None, data_dir: Path) -> pl
                         "gold_in_cands": norm(gold_m) in {norm(x) for x in (r["candidates"] or [])},
                         "cat_choice": r["pred_category"],
                         "cat_confidence": r["jev_category_confidence"],
-                        "cat_correct": r["pred_category"] == r["gold_category"]})
+                        "cat_correct": r["pred_category"] is not None
+                                       and r["pred_category"] == r["gold_category"]})
         print(f"synthetic {split}: {len(p)} rows", flush=True)
     return pl.DataFrame(out, infer_schema_length=None)
 

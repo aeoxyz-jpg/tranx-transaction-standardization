@@ -51,8 +51,9 @@ def merchant_normalized_match(pred: pl.DataFrame, gold: pl.DataFrame) -> float:
 
 def _merchant_join(pred: pl.DataFrame, gold: pl.DataFrame, extra: tuple = ()) -> pl.DataFrame:
     """Predicted and gold merchant (and category, when both frames carry one) per txn."""
-    pc = ["txn_id", "canonical_merchant"] + (["category"] if "category" in pred.columns else [])
-    gc = ["txn_id", "canonical_merchant"] + (["category"] if "category" in gold.columns else []) + list(extra)
+    both = "category" in pred.columns and "category" in gold.columns  # both or neither
+    pc = ["txn_id", "canonical_merchant"] + (["category"] if both else [])
+    gc = ["txn_id", "canonical_merchant"] + (["category"] if both else []) + list(extra)
     return pred.select(pc).join(gold.select(gc), on="txn_id", suffix="_gold")
 
 
