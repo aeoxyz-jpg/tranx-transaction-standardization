@@ -1,8 +1,8 @@
 flowchart TD
     Q1{"Do you have labelled<br/>training rows?"}
     Q1 -->|yes| Q2{"Are the merchants<br/>mostly familiar?"}
-    Q1 -->|no| JEV["<b>Jev category choice</b><br/>zero-shot, description only<br/>synthetic unseen 0.83<br/>DoDataThings 0.81"]
-    Q2 -->|yes| EMB["<b>Embedding + logistic regression</b><br/>DoDataThings 0.90 (Jev 0.81)<br/>synthetic cache misses 0.79 (Jev 0.78, a tie)"]
+    Q1 -->|no| JEV["Jev category choice<br/>zero-shot, description only<br/>synthetic unseen 0.83<br/>DoDataThings 0.81"]
+    Q2 -->|yes| EMB["Embedding + logistic regression<br/>DoDataThings 0.90 (Jev 0.81)<br/>synthetic cache misses 0.79 (Jev 0.78, a tie)"]
     Q2 -->|"no, new brands"| JEV
     subgraph REF["For reference"]
         BASE["Type code, MCC and amount only<br/>(no description): 0.69"]

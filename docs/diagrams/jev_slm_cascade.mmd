@@ -1,8 +1,8 @@
 flowchart LR
-    D["Transaction<br/>description"] --> C{"Descriptor<br/>in cache?"}
-    C -->|yes| OUT0["Merchant = stored value"]
-    C -->|no| F["Fuzzy retrieval:<br/>top-20 known merchants"]
-    F --> J{"Jev Choice:<br/>one of the 20,<br/>or none_of_these"}
-    J -->|"picked a merchant"| OUT1["Merchant = Jev's pick"]
-    J -->|none_of_these| S["SLM few-shot<br/>writes the merchant"]
-    S --> OUT2["Merchant = SLM output"]
+    D["Descriptor"] --> C{"Seen this exact<br/>descriptor before?"}
+    C -->|yes| K["Stored merchant<br/>(no model call)"]
+    C -->|no| R["Fuzzy retrieval:<br/>20 closest known merchants"]
+    R --> J{"Jev: one of the 20,<br/>or none of these"}
+    J -->|picked| M1["Merchant = Jev's pick"]
+    J -->|none of these| S["Local SLM<br/>writes the name"]
+    S --> M2["Merchant = SLM's name"]
