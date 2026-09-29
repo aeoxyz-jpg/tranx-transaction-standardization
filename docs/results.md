@@ -205,3 +205,45 @@ Mean tokens per call: 317 input, 19 output; these do not depend on where the mod
 The throughput figures describe this laptop only. A cloud GPU with a batching inference
 server can differ by a large factor and was not measured here; these figures show just that
 Ollama's default setting queues concurrent requests instead of running them together.
+
+## 10. Self-hosted SLM cost estimate
+
+No cloud provider or inference-server project publishes throughput for a ~3B model on
+requests of about 317 input and 19 output tokens, and it was not measured here. The
+estimate scales published 8B prompt-processing throughput to 3B by compute. Prices are
+AWS on-demand, US East (N. Virginia), from the official price list read 2026-09-29.
+
+**Anchors (published):**
+
+- Microsoft, Llama 3.1 8B, vLLM, fp16, one GPU, long prompts (3,000-6,000 input tokens):
+  about 22,269 prompt tokens/s on H100 and 7,926 on A100 80 GB
+  ([Azure HPC blog](https://techcommunity.microsoft.com/blog/azurehighperformancecomputingblog/inference-performance-of-llama-3-1-8b-using-vllm-across-various-gpus-and-cpus/4448420)).
+- NVIDIA, Llama 3.1 8B fp8, 200/200 tokens, 250 concurrent requests: 6,246 tokens/s on
+  L40S and 12,965 on H100, a ratio of 0.48
+  ([NIM benchmarking docs](https://docs.nvidia.com/nim/benchmarking/llm/1.0.0/performance.html)).
+- Google, Llama 2: H100 machines give 13.8 times the prompt throughput of L4 machines
+  ([Google Cloud blog](https://cloud.google.com/blog/products/ai-machine-learning/selecting-gpus-for-llm-serving-on-gke)).
+- For 3B models the published figures are long-output batches on A100 40 GB and H200
+  ([arXiv 2510.18245](https://arxiv.org/abs/2510.18245)); they confirm decoding 19 tokens
+  per request is not the bottleneck.
+
+**Derivation.** One request needs about 2 x 3.1 billion parameters x 336 tokens, roughly
+2.1 TFLOP. The H100 anchor corresponds to about 356 TFLOPS achieved; at the same
+efficiency a 3B model handles about 57k prompt tokens/s, or about 180 requests/s. The low
+end is a third of that, since small models reach lower utilization and scheduling
+overhead grows at hundreds of requests per second. L4 is the H100 range divided by 8 to
+14 (peak-compute ratio, and Google's measured ratio); L40S is the H100 range times 0.48.
+
+| Instance (GPU) | $ per hour | Requests per second | $ per 1,000 requests at full load |
+|---|---|---|---|
+| g6.xlarge (L4) | 0.8048 | 10-25 | 0.0089-0.0224 |
+| g6e.xlarge (L40S) | 1.861 | 30-90 | 0.0057-0.0172 |
+| p5.4xlarge (H100, 1 GPU) | 6.88 | 60-180 | 0.0106-0.0319 |
+
+Assumptions: full utilization and no latency target; a tight time-to-first-token target
+lowers usable throughput. At 30% average use, costs rise about 3.3 times; a g6.xlarge
+running all month costs about $588 regardless of traffic.
+
+Not found: official small-model throughput for L4, A10G or T4; official GCP prices (the
+pricing pages could not be read; a third-party page lists g2-standard-4 with one L4 at
+about $0.71 per hour). A10G figures found only in vendor posts were not used.

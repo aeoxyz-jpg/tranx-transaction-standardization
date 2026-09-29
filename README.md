@@ -512,12 +512,25 @@ task was not measured), one call costs about $0.00021 on the Batch API, 7.7 time
 $0.00041 in real time, 15 times Jev.
 
 **Self-hosted SLM.** Run on the bank's own servers or cloud account, the SLM is paid for
-in machine time: its cost per transaction is the instance's hourly price divided by the
-number of descriptors it handles per hour. That throughput depends on the GPU and the
-serving software (a batching inference server handles many requests at once) and was not
-measured on cloud hardware here, so no self-hosted per-call cost is quoted. The only
-throughput numbers in this project come from the development laptop and describe that
-machine alone ([docs/results.md](docs/results.md#9-slm-throughput-on-the-development-laptop)).
+in machine time: cost per transaction is the instance's hourly price divided by the
+requests it serves per hour. Cloud throughput was not measured here, and no provider
+publishes a figure for a 3B model on requests this short, so the table below is an
+estimate. It takes the prompt-processing throughput Microsoft and NVIDIA report for an 8B
+model on cloud GPUs, scales it to 3B by compute (94% of this workload's compute is reading
+the 317-token prompt), and gives a low-high range; prices are on-demand, US East, read
+2026-09-29 from the AWS price list.
+
+| Instance (GPU) | $ per hour | Estimated requests per second | $ per 1,000 requests at full load |
+|---|---|---|---|
+| g6.xlarge (L4) | 0.80 | 10-25 | 0.009-0.022 |
+| g6e.xlarge (L40S) | 1.86 | 30-90 | 0.006-0.017 |
+| p5.4xlarge (H100) | 6.88 | 60-180 | 0.011-0.032 |
+
+At full load a self-hosted call costs about $0.000006-0.00003, the same order as Jev and
+6 to 35 times below the hosted Batch price. Instances bill by the hour whether busy or
+not: at 30% average use, multiply by about 3.3. Sources and the derivation are in
+[docs/results.md](docs/results.md#10-self-hosted-slm-cost-estimate); a one-hour benchmark on a
+g6.xlarge (under $1) would replace the estimate with a measurement.
 
 **At bank scale.** For a large US regional bank at about 5 million card and ACH
 transactions a day (an estimate: Regions reported about 700 million debit card
@@ -527,13 +540,15 @@ Federal Reserve Payments Study), with the SLM tier priced at the hosted Batch ra
 | Setup | per day | per year |
 |---|---|---|
 | Every transaction through Jev | $135 | $49k |
-| Jev then SLM, no cache | $510 | $186k |
+| Jev then hosted SLM (Batch rate), no cache | $510 | $186k |
 | Same, 20% cache misses | $102 | $37k |
 | Same, 5% cache misses | $26 | $9k |
+| Jev then self-hosted SLM on 1-3 g6.xlarge, no cache | $154-193 | $56k-70k |
 
 The SLM share is 36.4% of misses (MoneyData realistic list); without a cache that is about
-1.8 million SLM calls a day, the volume a self-hosted deployment would need to be sized
-for. At this scale the model bill is small
+1.8 million SLM calls a day, which the throughput estimate above puts at one to three L4
+instances running around the clock, assuming load spread evenly over the day. At this
+scale the model bill is small
 next to the cost of keeping the merchant list clean, labelling, and the review of whether
 descriptors, which can contain personal names, may be sent to an external service.
 
