@@ -1,0 +1,42 @@
+{
+  "model": "qwen2.5:3b-instruct",
+  "machine": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "ollama_num_parallel": 8,
+    "cpu": "Apple M5",
+    "memory_gb": 24
+  },
+  "runs": [
+    {
+      "concurrency": 1,
+      "requests": 64,
+      "seconds": 25.53,
+      "requests_per_second": 2.51,
+      "ms_per_request": 398.9
+    },
+    {
+      "concurrency": 2,
+      "requests": 64,
+      "seconds": 18.5,
+      "requests_per_second": 3.46,
+      "ms_per_request": 289.0
+    },
+    {
+      "concurrency": 4,
+      "requests": 64,
+      "seconds": 15.39,
+      "requests_per_second": 4.16,
+      "ms_per_request": 240.4
+    },
+    {
+      "concurrency": 8,
+      "requests": 64,
+      "seconds": 14.39,
+      "requests_per_second": 4.45,
+      "ms_per_request": 224.9
+    }
+  ],
+  "mean_prompt_tokens": 317.4,
+  "mean_output_tokens": 19.1,
+  "note": "laptop measurement; not a cloud GPU throughput"
+}

@@ -39,7 +39,7 @@ recommended setup from the results.
 >   seen before, so a descriptor cache comes first.
 > - **Known merchants:** Jev picks best from the list, 0.94 on synthetic data and 0.96 on
 >   real statements (embeddings 0.84 / 0.88).
-> - **New merchants:** only the local SLM can name them (0.76), and it does far better on
+> - **New merchants:** only the self-hosted SLM can name them (0.76), and it does far better on
 >   national brands (0.83) than on unfamiliar local businesses (0.50).
 > - **Category:** Jev without training (0.83 on new brands); embeddings when there are
 >   labels from the same source (0.90 vs 0.81).
@@ -112,7 +112,7 @@ section.
   one benchmark [7]), so some pipelines use it offline only [8].
 - **Where the model runs matters.** Any hosted model, whether a generative LLM or a
   multiple-choice model such as Jev below, receives the descriptor, which can contain
-  personal names; banks weigh this against local models that keep data in-house [5].
+  personal names; banks weigh this against models they host themselves [5].
 
 ### What this project adds
 
@@ -124,7 +124,7 @@ models. This project:
   about national chains.
 - **Scores only what a model would see.** A production system answers repeated
   descriptors from a cache, so the headline scores use descriptors never seen in training.
-- **Combines a cheap multiple-choice model with a local generative one** and measures when
+- **Combines a cheap multiple-choice model with a self-hosted generative one** and measures when
   that combination pays off.
 - **Defines "correct" for the product** (parent brands, generic places) and fixes one
   comparison in advance, tested with a paired bootstrap over merchants.
@@ -168,7 +168,7 @@ data. Direction is the sign of the amount for every method.
 | `metadata` (baseline) | type code, MCC, amount | category only | no | the MCC encodes the line of business | no merchant; MCCs are coarse and noisy |
 | `rules` | description, MCC | best fuzzy match, else cleaned text; category from MCC or merchant history | no | token-overlap matching tolerates extra words | only known merchants |
 | `embedding` | description | nearest known name; category from a classifier | no | similar strings get similar vectors | always answers with a known name; the classifier learns known brands |
-| `slm_fewshot` | description | a merchant name it writes; a category | no (runs locally) | the model has read about brands and knows what words like "cantina" mean | only what the model knows; about 0.5 s per transaction |
+| `slm_fewshot` | description | a merchant name it writes; a category | no (self-hosted) | the model has read about brands and knows what words like "cantina" mean | only what the model knows; about 0.5 s per transaction |
 | `jev_merchant` | description | one of 20 retrieved candidates or "none of these"; a category | yes (hosted API) | choosing is easier than writing, and each choice has a confidence | only merchants retrieval offered |
 | `jev_slm` | description | Jev's pick, else the SLM's name | yes | Jev for known merchants, the SLM for new ones | a wrong Jev pick never reaches the SLM |
 
@@ -190,7 +190,8 @@ data, cannot answer "not on the list", and its category classifier learns the br
 was trained on.
 
 **A small language model, few-shot (`slm_fewshot`).** The only method that can write a
-merchant name nobody gave it, and it runs on the bank's own hardware. A prompt with
+merchant name nobody gave it, and it runs on infrastructure the bank controls: its own
+servers or its own cloud account, so no third party sees the descriptors. A prompt with
 instructions, the category names and five worked examples (`SQ *CANES 47486` becomes
 Raising Cane's) goes to Qwen2.5-3B-Instruct on a local Ollama server at temperature 0; the
 model returns JSON with the merchant and the category, and an unparseable reply falls back
@@ -450,7 +451,7 @@ flowchart LR
 
 1. **Cache exact descriptors first;** most rows never reach a model.
 2. **Known merchants: Jev over a brand-only list** (0.94 synthetic, 0.96 real).
-3. **New merchants: the local SLM** names them; unfamiliar local businesses are much
+3. **New merchants: the self-hosted SLM** names them; unfamiliar local businesses are much
    harder (0.50) than national brands (0.83).
 4. **Category: Jev** when there is no in-domain labelled data or brands are new; an
    embedding classifier trained on the bank's own labels when there is.
@@ -458,7 +459,7 @@ flowchart LR
    "none of these" fails.
 
 > [!IMPORTANT]
-> **If descriptors may not leave the bank,** replace Jev with the local methods:
+> **If descriptors may not go to a third party,** replace Jev with self-hosted methods:
 > embeddings for known merchants (0.84 synthetic, 0.88 real, about 6.5 ms per transaction)
 > and the SLM for new ones. The cost is accuracy on known merchants (0.96 to 0.88 on real
 > statements) and the loss of a "none of these" signal; the embedding similarity is a weak
@@ -503,24 +504,38 @@ flowchart TD
 
 ### Cost at bank scale (a scenario, not a measurement)
 
-For a large US regional bank at about 5 million card and ACH transactions a day (an
-estimate: Regions reported about 700 million debit card transactions in 2010, and US debit
-volume roughly tripled to 120.6 billion in 2024 per the Federal Reserve Payments Study):
+**Per call.** Jev costs about $0.000027 per transaction (641 input tokens measured in this
+run, at $42 per billion input tokens; output is free, per typesafe.ai). The SLM prompt is
+317 input and 19 output tokens on average (`reports/slm_throughput.json`). Priced as a
+hosted model (Claude Haiku 4.5, used here only as a price reference; its accuracy on this
+task was not measured), one call costs about $0.00021 on the Batch API, 7.7 times Jev, or
+$0.00041 in real time, 15 times Jev.
+
+**Self-hosted SLM.** Run on the bank's own servers or cloud account, the SLM is paid for
+in machine time: its cost per transaction is the instance's hourly price divided by the
+number of descriptors it handles per hour. That throughput depends on the GPU and the
+serving software (a batching inference server handles many requests at once) and was not
+measured on cloud hardware here, so no self-hosted per-call cost is quoted. The only
+throughput numbers in this project come from the development laptop and describe that
+machine alone ([docs/results.md](docs/results.md#9-slm-throughput-on-the-development-laptop)).
+
+**At bank scale.** For a large US regional bank at about 5 million card and ACH
+transactions a day (an estimate: Regions reported about 700 million debit card
+transactions in 2010, and US debit volume roughly tripled to 120.6 billion in 2024 per the
+Federal Reserve Payments Study), with the SLM tier priced at the hosted Batch rate:
 
 | Setup | per day | per year |
 |---|---|---|
 | Every transaction through Jev | $135 | $49k |
-| Jev then SLM, no cache | $517 | $189k |
-| Same, 20% cache misses | $103 | $38k |
+| Jev then SLM, no cache | $510 | $186k |
+| Same, 20% cache misses | $102 | $37k |
 | Same, 5% cache misses | $26 | $9k |
 
-Inputs: Jev at $42 per billion input tokens, output free (typesafe.ai); 641 input tokens
-per call, measured in this run; 36.4% of misses sent to the SLM (MoneyData realistic
-list); the SLM tier priced as a hosted Claude Haiku 4.5 on the Batch API (about 295 input
-and 25 output tokens per call; its accuracy on this task was not measured, and hosting it
-sends descriptors out as well). At this scale the model bill is small next to the cost of
-keeping the merchant list clean, labelling, and the review of whether descriptors, which
-can contain personal names, may be sent to an external service.
+The SLM share is 36.4% of misses (MoneyData realistic list); without a cache that is about
+1.8 million SLM calls a day, the volume a self-hosted deployment would need to be sized
+for. At this scale the model bill is small
+next to the cost of keeping the merchant list clean, labelling, and the review of whether
+descriptors, which can contain personal names, may be sent to an external service.
 
 ## 7. Reproduce and dig deeper
 
@@ -552,6 +567,7 @@ manifest.
 | `scripts/jev_confidence.py --synthetic-only` | Jev's confidence and "none of these" behaviour |
 | `scripts/jev_threshold_cascade.py --synthetic-only` | cascade accuracy at confidence thresholds |
 | `scripts/cache_sim.py` | how often a descriptor is new |
+| `scripts/slm_throughput.py` | SLM requests per second at 1-8 concurrent requests, and its token counts |
 | `scripts/make_figures.py` | every figure, light and dark |
 | `scripts/eval_moneydata.py --methods ""` | MoneyData scores from saved predictions (without the flag it calls the models again) |
 | `scripts/eval_ddt.py` | DoDataThings category scores |

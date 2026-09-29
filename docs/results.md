@@ -187,3 +187,21 @@ predictions on 2 of 547 descriptors (0.857 here, 0.856 in section 5).
   0.52 in the first month, rising to 0.93 by the twelfth. Dates are uniform and the repeat
   structure is a generator setting, so this illustrates the mechanism rather than
   measuring it.
+
+## 9. SLM throughput on the development laptop
+
+`reports/slm_throughput.json` (server with `OLLAMA_NUM_PARALLEL=8`) and
+`reports/slm_throughput_default.json` (default server setting). 64 descriptors from the
+unseen model view, Qwen2.5-3B-Instruct, Apple M5, 24 GB.
+
+| Requests in flight | parallel server: per second | default server: per second |
+|---|---|---|
+| 1 | 2.51 | 2.49 |
+| 2 | 3.46 | 2.48 |
+| 4 | 4.16 | 2.16 |
+| 8 | 4.45 | 1.87 |
+
+Mean tokens per call: 317 input, 19 output; these do not depend on where the model runs.
+The throughput figures describe this laptop only. A cloud GPU with a batching inference
+server can differ by a large factor and was not measured here; these figures show just that
+Ollama's default setting queues concurrent requests instead of running them together.
