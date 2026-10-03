@@ -575,6 +575,54 @@ scale the model bill is small
 next to the cost of keeping the merchant list clean, labelling, and the review of whether
 descriptors, which can contain personal names, may be sent to an external service.
 
+### Future opportunities (not tested)
+
+The weakest result is unfamiliar local businesses: the SLM names 0.50 of them. Reading its
+answers on the unseen split points to fixes on the model side and on the data side. None of
+the ideas below has been run.
+
+**Naming new local merchants better (SLM)**
+
+- **Keep the full business name.** The few-shot examples teach the model to shorten names to
+  a brand, so `QUIMBYS TOYSHOP 86352` comes back as "Quimby's". A prompt rule to keep type
+  words such as Toyshop, Bistro or Plumbing, plus a few local-business examples, targets
+  this.
+- **Check the answer against the descriptor.** Some answers rewrite or invent words ("Sunny
+  Otter Teahouse" for `SUNNY OTTER TEAROOM`) or leave English. Accepting an answer only when
+  each of its words can be traced to the descriptor, and otherwise falling back to the
+  cleaned text or a review queue, also gives the SLM the confidence signal it lacks.
+- **Split run-together descriptors** (`HOLLOWAYSBISTRO2717AUSTIN`) into words before the
+  model reads them.
+- **Name a merchant once, not each descriptor.** Truncated and abbreviated descriptors lose
+  the name, and no model can restore it from one descriptor. Grouping a merchant's
+  descriptors, by the processor's merchant id where the feed carries one or by fuzzy
+  clustering within a city, and naming the group from its most complete variant would fix
+  truncation, split names and merged merchants together. Tranx has no merchant id field to
+  test this.
+
+**Growing the known list (Jev and in-house matching)**
+
+- **Add the bank's own business clients.** A regional bank's business customers, and its
+  merchant-services portfolio if it has one, are largely the local businesses the SLM finds
+  hardest. On the list, a local merchant becomes a known one, which Jev picks at 0.96
+  against 0.70 for embeddings and 0.67 for rules (synthetic known merchants). The list
+  needs the name the business trades under, since the descriptor carries that and not the
+  legal name; a merchant-services record also carries the merchant id, which matches
+  without fuzzy search.
+- **Limit candidates by location.** A larger list brings more look-alike names, and
+  look-alikes are where Jev files a new merchant under a known one, so it never reaches the
+  SLM. Offering only candidates from the descriptor's city or state would contain this.
+- **Keep client names in-house.** Every Jev call sends its candidate names, so a list built
+  from the bank's clients would tell a third party who banks there. Such a list belongs in
+  in-house fuzzy or embedding matching unless the bank clears it for Jev.
+- **A steward queue ranked by spend.** Local merchants in a bank's footprint are finite, and
+  each needs naming once before it becomes a known merchant.
+
+**A test that would settle the client-list idea:** put a share of the unseen local
+merchants on the list together with unrelated decoy names, then measure accuracy on the
+listed merchants and how often unlisted ones are picked as a listed name. The second number
+decides whether a bigger list helps or hurts.
+
 ## 7. Reproduce and dig deeper
 
 ```bash
