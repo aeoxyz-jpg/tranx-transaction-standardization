@@ -38,6 +38,30 @@
   "moneydata_realistic_list": {
     "descriptors": 547,
     "rows": 3521,
+    "gate_separation": {
+      "off_list_descriptors": 202,
+      "on_list_descriptors": 345,
+      "jev_none": {
+        "off_list_sent_to_slm": 0.955,
+        "on_list_sent_to_slm": 0.017,
+        "slm_correct_on_on_list_sent": 0.167
+      },
+      "fuzzy_below_85": {
+        "off_list_sent_to_slm": 0.97,
+        "on_list_sent_to_slm": 0.586,
+        "slm_correct_on_on_list_sent": 0.881
+      },
+      "embedding_below_0.6": {
+        "off_list_sent_to_slm": 0.941,
+        "on_list_sent_to_slm": 0.212,
+        "slm_correct_on_on_list_sent": 0.767
+      },
+      "embedding_below_0.7": {
+        "off_list_sent_to_slm": 0.985,
+        "on_list_sent_to_slm": 0.49,
+        "slm_correct_on_on_list_sent": 0.858
+      }
+    },
     "sent_to_slm": {
       "fuzzy_to_slm": 0.728,
       "embedding_to_slm": 0.481,

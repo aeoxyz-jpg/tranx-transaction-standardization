@@ -40,6 +40,7 @@ FUZZY_CUTOFF = 85  # RulesRoute default
 EMBED_GATE = 0.6
 MONEYDATA_PREDS = config.REPORTS_DIR / "real" / "moneydata_preds_high-medium.parquet"
 MONEYDATA_ALIASES = Path("data/real/moneydata_aliases.csv")
+MONEYDATA_LABELS = Path("data/real/moneydata_labels.csv")
 
 
 def synthetic_rows(split: str, manifest: dict, preds_dir: Path) -> pl.DataFrame:
@@ -90,7 +91,7 @@ def synthetic_summary(d: pl.DataFrame) -> dict:
                                                       n_boot=config.BOOTSTRAP_N, seed=0)}
 
 
-def moneydata_summary(preds_path: Path, aliases_path: Path) -> dict:
+def moneydata_summary(preds_path: Path, aliases_path: Path, labels_path: Path | None = None) -> dict:
     if aliases_path.exists():
         for r in pl.read_csv(aliases_path).iter_rows(named=True):
             em.ALIASES[r["canonical_merchant"]] = {norm(a) for a in (r["aliases"] or "").split("|")
@@ -114,8 +115,28 @@ def moneydata_summary(preds_path: Path, aliases_path: Path) -> dict:
     def diff(a, b, weights=None):
         return paired_bootstrap(ok[a], ok[b], cl, weights=weights, n_boot=config.BOOTSTRAP_N, seed=0)
 
+    gate = {}
+    if labels_path is not None and labels_path.exists():
+        # Realistic list as in eval_moneydata.py: merchants in >= 2 labelled descriptors
+        # (any confidence) are on it. A gate should send off-list descriptors to the SLM
+        # and keep on-list ones.
+        lab = pl.read_csv(labels_path).filter(pl.col("canonical_merchant") != em.NOT_MERCHANT)
+        seen = lab.group_by("canonical_merchant").len()
+        listed = set(seen.filter(pl.col("len") >= 2)["canonical_merchant"].to_list())
+        off = np.array([g not in listed for g in gold])
+        escalated = {"jev_none": np.array([j == "" for j in p["jev_hold"]]),
+                     "fuzzy_below_85": ~fuzzy_ok, "embedding_below_0.6": ~embed_ok,
+                     "embedding_below_0.7": p["embed_hold_cos"].to_numpy() < 0.7}
+        gate = {"off_list_descriptors": int(off.sum()), "on_list_descriptors": int((~off).sum()),
+                **{k: {"off_list_sent_to_slm": round(float(v[off].mean()), 3),
+                       "on_list_sent_to_slm": round(float(v[~off].mean()), 3),
+                       # Of the on-list descriptors this router sent on, how many the SLM still named.
+                       "slm_correct_on_on_list_sent": round(float(ok["slm"][~off & v].mean()), 3)
+                       if (~off & v).any() else None}
+                   for k, v in escalated.items()}}
     return {
         "descriptors": len(p), "rows": int(n.sum()),
+        "gate_separation": gate,
         "sent_to_slm": {"fuzzy_to_slm": round(float(1 - fuzzy_ok.mean()), 3),
                         "embedding_to_slm": round(float(1 - embed_ok.mean()), 3),
                         "jev_to_slm": round(float(np.mean([j == "" for j in p["jev_hold"]])), 3)},
@@ -141,7 +162,7 @@ def main():
                       f"MoneyData also embedding (cosine >= {EMBED_GATE}) else SLM",
            **{s: synthetic_summary(synthetic_rows(s, manifest, Path(args.preds_dir)))
               for s in ("random", "unseen")},
-           "moneydata_realistic_list": moneydata_summary(MONEYDATA_PREDS, MONEYDATA_ALIASES)}
+           "moneydata_realistic_list": moneydata_summary(MONEYDATA_PREDS, MONEYDATA_ALIASES, MONEYDATA_LABELS)}
     Path(args.out).write_text(json.dumps(res, indent=2))
     print(json.dumps(res, indent=2))
 

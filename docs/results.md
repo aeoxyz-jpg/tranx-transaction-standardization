@@ -293,5 +293,19 @@ comparison.
   fictional locals at 0.96, embeddings 0.70, rules 0.67, the SLM 0.49. Invented names share
   no word with real labels, so this gap is likely larger than it would be for real local
   names that resemble each other.
+- How well each gate separates the two kinds of descriptor (`gate_separation`; 202 of
+  the 547 descriptors belong to merchants off the realistic list):
+
+  | Gate | off-list descriptors sent to the SLM | on-list descriptors sent to the SLM |
+  |---|---|---|
+  | Jev answers none of these | 95.5% | 1.7% |
+  | fuzzy score below 85 | 97.0% | 58.6% |
+  | embedding cosine below 0.6 | 94.1% | 21.2% |
+  | embedding cosine below 0.7 | 98.5% | 49.0% |
+
+  At a similar rate of catching off-list merchants, the embedding gate sends twelve times
+  as many on-list descriptors to the SLM as Jev does. The end-to-end gap stays small
+  because the SLM names most of those merchants correctly anyway: 76.7% of the on-list
+  descriptors the 0.6 embedding router sends on (`slm_correct_on_on_list_sent`).
 - On real data the fuzzy gate accepts only 27% of descriptors, so the in-house cascade is
   mostly the SLM, which gives no confidence score to decide which answers need review.
