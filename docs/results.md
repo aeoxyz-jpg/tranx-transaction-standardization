@@ -247,3 +247,51 @@ running all month costs about $588 regardless of traffic.
 Not found: official small-model throughput for L4, A10G or T4; official GCP prices (the
 pricing pages could not be read; a third-party page lists g2-standard-4 with one L4 at
 about $0.71 per hour). A10G figures found only in vendor posts were not used.
+
+## 11. In-house cascade: fuzzy match, else SLM
+
+`reports/inhouse_cascade.json` (`scripts/inhouse_cascade.py`; exploratory, saved predictions
+only). Section 3 compares `jev_slm` with the SLM alone and Jev with embeddings. A bank that
+cannot send descriptors to a third party would run neither: it would match known merchants
+in-house and send the rest to the SLM. This cascade takes the fuzzy match when its
+`token_set_ratio` is 85 or more (the `rules` cutoff), otherwise the SLM's answer.
+
+On the synthetic splits the `rules` route is refit on each split's training rows to recover
+which descriptors matched; its answers reproduce the saved `rules` predictions on every row.
+A matched row takes the `rules` category, a row sent to the SLM takes the SLM's, which
+matters only for the parent-brand rule. Scored like the section 1 headline.
+
+| Synthetic, model view | fuzzy matched | rules | SLM | fuzzy, else SLM | jev_slm | jev_slm - cascade (95% CI) |
+|---|---|---|---|---|---|---|
+| random (866 rows) | 71.7% | 0.68 | 0.76 | 0.81 | 0.95 | +0.140 (+0.109 to +0.172) |
+| unseen (1,963 rows) | 6.4% | 0.19 | 0.76 | 0.71 | 0.74 | +0.030 (-0.013 to +0.078) |
+
+On MoneyData's realistic list `fuzzy_hold` is a top-1 match with no cutoff, so its score is
+recomputed and gated at 85. The embedding cascade from section 5 (cosine 0.6) is shown for
+comparison.
+
+| MoneyData, realistic list | sent to the SLM | per descriptor | per row |
+|---|---|---|---|
+| SLM alone | 100% | 0.806 | 0.826 |
+| fuzzy, else SLM | 72.8% | 0.819 | 0.842 |
+| embedding (cosine 0.6), else SLM | 48.1% | 0.824 | 0.858 |
+| Jev, none to SLM | 36.4% | 0.856 | 0.870 |
+
+| Comparison (A - B), MoneyData | diff | 95% CI |
+|---|---|---|
+| Jev cascade - fuzzy cascade, per descriptor | +0.037 | +0.013 to +0.079 |
+| Jev cascade - fuzzy cascade, row-weighted | +0.028 | +0.006 to +0.080 |
+| Jev cascade - embedding cascade, per descriptor | +0.031 | +0.011 to +0.068 |
+| Jev cascade - embedding cascade, row-weighted | +0.012 | +0.004 to +0.031 |
+| fuzzy cascade - SLM alone, per descriptor | +0.013 | -0.006 to +0.038 |
+
+- On real statements Jev's lead over an all-in-house cascade is small: the SLM already
+  names the national brands that dominate this person's spending, so the in-house cascade
+  loses little by sending most descriptors to it.
+- On synthetic known merchants the lead is large, and it comes from local businesses on
+  the list: by origin (section 1 subsets, `reports/leaderboard_hard_jev.json`) Jev picks known
+  fictional locals at 0.96, embeddings 0.70, rules 0.67, the SLM 0.49. Invented names share
+  no word with real labels, so this gap is likely larger than it would be for real local
+  names that resemble each other.
+- On real data the fuzzy gate accepts only 27% of descriptors, so the in-house cascade is
+  mostly the SLM, which gives no confidence score to decide which answers need review.

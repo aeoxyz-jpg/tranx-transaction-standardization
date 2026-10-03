@@ -1,0 +1,94 @@
+{
+  "manifest_hash": "0fa461daa6b2c8359d63e4cc1ed59e08e9aa067903f0f1710c26d58ac6203809",
+  "cascade": "fuzzy match (token_set_ratio >= 85) else SLM; MoneyData also embedding (cosine >= 0.6) else SLM",
+  "random": {
+    "rows": 866,
+    "fuzzy_matched_share": 0.717,
+    "accuracy": {
+      "rules": 0.682,
+      "slm": 0.756,
+      "cascade": 0.809,
+      "jev_slm": 0.949
+    },
+    "jev_slm_minus_cascade": {
+      "diff": 0.1397228637413395,
+      "lo": 0.1085422521494755,
+      "hi": 0.17185933412102286,
+      "n_clusters": 393,
+      "n_rows": 866
+    }
+  },
+  "unseen": {
+    "rows": 1963,
+    "fuzzy_matched_share": 0.064,
+    "accuracy": {
+      "rules": 0.191,
+      "slm": 0.755,
+      "cascade": 0.707,
+      "jev_slm": 0.737
+    },
+    "jev_slm_minus_cascade": {
+      "diff": 0.030056036678553236,
+      "lo": -0.012563209127397997,
+      "hi": 0.07820959438716789,
+      "n_clusters": 213,
+      "n_rows": 1963
+    }
+  },
+  "moneydata_realistic_list": {
+    "descriptors": 547,
+    "rows": 3521,
+    "sent_to_slm": {
+      "fuzzy_to_slm": 0.728,
+      "embedding_to_slm": 0.481,
+      "jev_to_slm": 0.364
+    },
+    "per_descriptor": {
+      "slm": 0.806,
+      "fuzzy_to_slm": 0.819,
+      "embedding_to_slm": 0.824,
+      "jev_to_slm": 0.856
+    },
+    "per_row": {
+      "slm": 0.826,
+      "fuzzy_to_slm": 0.842,
+      "embedding_to_slm": 0.858,
+      "jev_to_slm": 0.87
+    },
+    "jev_to_slm_minus_fuzzy_to_slm": {
+      "diff": 0.03656307129798903,
+      "lo": 0.013109331500023825,
+      "hi": 0.07908163265306123,
+      "n_clusters": 261,
+      "n_rows": 547
+    },
+    "jev_to_slm_minus_fuzzy_to_slm_row_weighted": {
+      "diff": 0.027833001988071572,
+      "lo": 0.005762846823833782,
+      "hi": 0.07965527049964428,
+      "n_clusters": 261,
+      "n_rows": 547
+    },
+    "jev_to_slm_minus_embedding_to_slm": {
+      "diff": 0.031078610603290677,
+      "lo": 0.010778212805158914,
+      "hi": 0.06753246753246753,
+      "n_clusters": 261,
+      "n_rows": 547
+    },
+    "jev_to_slm_minus_embedding_to_slm_row_weighted": {
+      "diff": 0.012212439647827322,
+      "lo": 0.0037036009372302383,
+      "hi": 0.03079901609732289,
+      "n_clusters": 261,
+      "n_rows": 547
+    },
+    "fuzzy_to_slm_minus_slm": {
+      "diff": 0.012797074954296161,
+      "lo": -0.005640705852082677,
+      "hi": 0.038461538461538464,
+      "n_clusters": 261,
+      "n_rows": 547
+    }
+  }
+}

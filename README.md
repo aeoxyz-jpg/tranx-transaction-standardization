@@ -45,6 +45,9 @@ recommended setup from the results.
 >   labels from the same source (0.90 vs 0.81).
 > - **Jev then SLM** beats the SLM alone on real statements (+0.049, significant) but not
 >   on purely new synthetic merchants (-0.018, not significant).
+> - **Against an all-in-house cascade** (fuzzy match, else SLM), Jev's lead on real
+>   statements is small (+0.037); on synthetic known merchants it is large (+0.140), mostly
+>   from local businesses already on the list.
 
 > [!NOTE]
 > Every number here comes from a file under `reports/`, produced by one pinned run.
@@ -427,6 +430,24 @@ Marshalls, Mount Sinai for Cedars-Sinai) that never reach the SLM. A confidence 
 on Jev's pick recovers that small gap but costs accuracy on known merchants
 ([docs/results.md](docs/results.md#4-jev-as-a-new-merchant-detector)).
 
+A bank that keeps descriptors in-house would compare Jev with its own cascade instead: a
+fuzzy match when the score is 85 or more, otherwise the SLM. That comparison is
+exploratory and uses only saved predictions
+([docs/results.md](docs/results.md#11-in-house-cascade-fuzzy-match-else-slm)):
+
+| Jev then SLM, minus fuzzy then SLM | difference | 95% CI |
+|---|---|---|
+| MoneyData, realistic list, per descriptor | +0.037 | +0.013 to +0.079 |
+| MoneyData, realistic list, per row | +0.028 | +0.006 to +0.080 |
+| synthetic, known merchants | +0.140 | +0.109 to +0.172 |
+| synthetic, new merchants | +0.030 | -0.013 to +0.078 |
+
+On real statements the SLM already names the national brands that dominate one person's
+spending, so the in-house cascade loses little. On synthetic known merchants the gap comes
+from local businesses on the list: Jev picks them at 0.96, embeddings at 0.70, rules at
+0.67 and the SLM at 0.49. The invented names share no word with real ones, so real local
+names that resemble each other would likely narrow this gap.
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="reports/figures/significance-dark.png">
@@ -463,7 +484,9 @@ flowchart LR
 > embeddings for known merchants (0.84 synthetic, 0.88 real, about 6.5 ms per transaction)
 > and the SLM for new ones. The cost is accuracy on known merchants (0.96 to 0.88 on real
 > statements) and the loss of a "none of these" signal; the embedding similarity is a weak
-> substitute (on MoneyData a 0.7 threshold sends 67% of descriptors on to the SLM).
+> substitute (on MoneyData a 0.7 threshold sends 67% of descriptors on to the SLM). As a
+> full cascade the in-house setup trails Jev then SLM by 0.03 on real statements but by
+> 0.14 on synthetic known merchants, where many are local businesses.
 
 <details open>
 <summary><b>Decision tree: merchant</b></summary>
@@ -582,6 +605,7 @@ manifest.
 | `scripts/jev_confidence.py --synthetic-only` | Jev's confidence and "none of these" behaviour |
 | `scripts/jev_threshold_cascade.py --synthetic-only` | cascade accuracy at confidence thresholds |
 | `scripts/cache_sim.py` | how often a descriptor is new |
+| `scripts/inhouse_cascade.py` | fuzzy match, else SLM, against Jev then SLM |
 | `scripts/slm_throughput.py` | SLM requests per second at 1-8 concurrent requests, and its token counts |
 | `scripts/make_figures.py` | every figure, light and dark |
 | `scripts/eval_moneydata.py --methods ""` | MoneyData scores from saved predictions (without the flag it calls the models again) |
@@ -597,6 +621,6 @@ Further reading:
 - [docs/results.md](docs/results.md): full tables for both evaluation views, subsets by
   merchant origin and noise, all significance tests, Jev's confidence and threshold sweep,
   MoneyData per row, per merchant and by spend, DoDataThings, category routing, cache
-  rates.
+  rates, the in-house cascade.
 - [docs/findings/](docs/findings/): earlier findings (fine-tuning, model size, first
   hard-mode results), kept as history; their numbers predate the current labels.
